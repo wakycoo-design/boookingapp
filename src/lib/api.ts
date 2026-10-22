@@ -73,11 +73,16 @@ export function apiRoute(scope: ApiScope, handler: Handler) {
       }
       return NextResponse.json({ data: result });
     } catch (err) {
-      if (err instanceof ZodError) return apiError(400, "invalid", "Invalid request", err.issues);
-      if (isDomainError(err)) return apiError(STATUS[err.code], err.code, err.message, err.details);
-      if (isUpstreamError(err)) return apiError(err.status, err.code === "not_configured" ? "not_configured" : "delivery_failed", err.message);
-      console.error(err);
-      return apiError(500, "internal", "Something went wrong");
+      return errorResponse(err);
     }
   };
+}
+
+/** Maps a thrown error to the `{ error }` response every API route answers with. */
+export function errorResponse(err: unknown) {
+  if (err instanceof ZodError) return apiError(400, "invalid", "Invalid request", err.issues);
+  if (isDomainError(err)) return apiError(STATUS[err.code], err.code, err.message, err.details);
+  if (isUpstreamError(err)) return apiError(err.status, err.code === "not_configured" ? "not_configured" : "delivery_failed", err.message);
+  console.error(err);
+  return apiError(500, "internal", "Something went wrong");
 }

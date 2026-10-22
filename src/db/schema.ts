@@ -57,7 +57,7 @@ export const business = pgTable("business", {
   timezone: text("timezone").notNull().default("Asia/Kolkata"),
   currency: text("currency").notNull().default("INR"),
   bookingPrefix: text("booking_prefix").notNull().default("BK-"),
-  slotIntervalMin: integer("slot_interval_min").notNull().default(15),
+  slotIntervalMin: integer("slot_interval_min").notNull().default(30),
   minNoticeMin: integer("min_notice_min").notNull().default(60),
   maxNoticeDays: integer("max_notice_days").notNull().default(60),
   clientCutoffMin: integer("client_cutoff_min").notNull().default(24 * 60),

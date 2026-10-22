@@ -40,7 +40,7 @@ describe("availability", () => {
     const { svc } = await setup();
     const s = await starts(svc.id);
     expect(s[0]).toBe(at("2026-10-19T09:00").toISOString());
-    expect(s).toHaveLength(31); // 09:00 to 16:30 every 15 minutes (30-minute service ends by 17:00)
+    expect(s).toHaveLength(16); // 09:00 to 16:30 every 30 minutes, the default (30-minute service ends by 17:00)
   });
 
   it("removes booked time, time off and other people's holds", async () => {
@@ -60,7 +60,7 @@ describe("availability", () => {
     const { svc, staff } = await setup();
     await c.schedules.setDateOverride({}, staff[0].id, { date: "2026-10-19", ranges: [{ startTime: "18:00", endTime: "19:00" }] });
     await c.schedules.setDateOverride({}, staff[0].id, { date: "2026-10-20", ranges: [] });
-    expect(await starts(svc.id)).toEqual(["18:00", "18:15", "18:30"].map((t) => at(`2026-10-19T${t}`).toISOString()));
+    expect(await starts(svc.id)).toEqual(["18:00", "18:30"].map((t) => at(`2026-10-19T${t}`).toISOString()));
     expect(await starts(svc.id, "2026-10-20")).toEqual([]);
     expect(await c.schedules.dateOverrides(staff[0].id, "2026-10-01", "2026-10-31")).toEqual([
       { date: "2026-10-19", ranges: [{ startTime: "18:00", endTime: "19:00" }] },
@@ -171,6 +171,8 @@ describe("holds", () => {
 describe("rescheduling and cancelling", () => {
   it("moves a booking by making a new one and cancelling the old, even when the times overlap", async () => {
     const { svc } = await setup();
+    // Starts every 15 minutes, so the new time can overlap the old one.
+    await c.settings.update({}, { ...(await c.settings.get()), slotIntervalMin: 15 });
     const { booking: old } = await c.bookings.create(desk, { serviceId: svc.id, start: at("2026-10-19T10:00"), client: asha }, { now });
     const moved = await c.bookings.reschedule(desk, old.id, { start: at("2026-10-19T10:15") }, { now });
     expect(moved).toMatchObject({ rescheduledFromId: old.id, status: "upcoming", clientId: old.clientId });
