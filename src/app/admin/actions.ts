@@ -9,12 +9,13 @@ import { act, optional, optionalNumber, str } from "@/lib/form-actions";
 import { parseQuestions } from "@/features/catalog/questions";
 import { parseDayRanges } from "@/lib/hours-form";
 import { zonedToUtc } from "@/lib/time";
-import { requireStaff, hasRole } from "@/lib/session";
+import { can, hasRole, requirePermission } from "@/lib/session";
 
 /** Staff may edit their own hours and time off; managers and admins may edit anyone's. */
 async function requireSelfOrManager(staffId: string) {
-  const me = await requireStaff();
-  if (me.id !== staffId && !hasRole(me, "manager")) redirect("/?error=forbidden");
+  // Their own hours need Availability · edit; someone else's also need Availability · view all.
+  const me = await requirePermission("availability", "edit");
+  if (me.id !== staffId && !can(me.permissions, "availability", "viewAll")) redirect("/?error=forbidden");
   return me;
 }
 
@@ -22,14 +23,14 @@ async function requireSelfOrManager(staffId: string) {
 const designationOf = (form: FormData) => DESIGNATIONS.find((d) => d === str(form, "designation")) ?? null;
 
 export async function createStaffAction(form: FormData) {
-  const me = await requireStaff("manager");
-  const role = str(form, "role") as "admin" | "manager" | "staff";
+  const me = await requirePermission("staff", "add");
   await act("/admin/staff", "Staff member added", async () => {
-    if (role === "admin" && !hasRole(me, "admin")) throw new DomainError("forbidden", "Only admins can add admins");
+    const role = await app().access.getRole(str(form, "roleId"));
+    if (role.base === "admin" && !hasRole(me, "admin")) throw new DomainError("forbidden", "Only admins can add admins");
     await app().staff.create({ staffId: me.id }, {
       name: str(form, "name"),
       email: str(form, "email"),
-      role,
+      roleId: role.id,
       designation: designationOf(form),
       timezone: str(form, "timezone") || "Asia/Kolkata",
     });
@@ -37,20 +38,20 @@ export async function createStaffAction(form: FormData) {
 }
 
 export async function updateStaffAction(staffId: string, form: FormData) {
-  const me = await requireStaff("manager");
+  const me = await requirePermission("staff", "edit");
   const path = `/admin/staff/${staffId}`;
   await act(path, "Saved", async () => {
     const target = await app().staff.get(staffId);
-    const role = str(form, "role") as "admin" | "manager" | "staff";
-    const changesAdmin = role !== target.role && (role === "admin" || target.role === "admin");
+    const role = await app().access.getRole(str(form, "roleId"));
+    const changesAdmin = role.base !== target.role && (role.base === "admin" || target.role === "admin");
     if (changesAdmin && !hasRole(me, "admin")) throw new DomainError("forbidden", "Only admins can change admin roles");
-    if (staffId === me.id && (role !== me.role || form.get("active") !== "on")) {
+    if (staffId === me.id && (role.id !== (target.roleId ?? role.id) || role.base !== me.role || form.get("active") !== "on")) {
       throw new DomainError("invalid", "You can't change your own role or deactivate yourself");
     }
     await app().staff.update({ staffId: me.id }, staffId, {
       name: str(form, "name"),
       email: str(form, "email"),
-      role,
+      roleId: role.id,
       designation: designationOf(form),
       timezone: str(form, "timezone"),
       active: form.get("active") === "on",
@@ -118,19 +119,19 @@ function serviceFields(form: FormData) {
 }
 
 export async function createServiceAction(form: FormData) {
-  const me = await requireStaff("manager");
+  const me = await requirePermission("services", "add");
   await act("/admin/services", "Service added", () => app().catalog.create({ staffId: me.id }, serviceFields(form)));
 }
 
 export async function updateServiceAction(serviceId: string, form: FormData) {
-  const me = await requireStaff("manager");
+  const me = await requirePermission("services", "edit");
   await act(`/admin/services/${serviceId}`, "Saved", () =>
     app().catalog.update({ staffId: me.id }, serviceId, { ...serviceFields(form), active: form.get("active") === "on" }),
   );
 }
 
 export async function deleteServiceAction(serviceId: string) {
-  const me = await requireStaff("manager");
+  const me = await requirePermission("services", "delete");
   await act(`/admin/services/${serviceId}`, "Service deleted", async () => {
     await app().catalog.remove({ staffId: me.id }, serviceId);
     return "/admin/services";
@@ -159,13 +160,13 @@ export async function removeDateOverrideAction(staffId: string, date: string) {
 }
 
 export async function sendTestEmailAction(form: FormData) {
-  await requireStaff("admin");
+  await requirePermission("settings.email", "edit");
   const to = str(form, "to");
   await act("/admin/settings/email", `Test email sent to ${to}. Check that inbox (and spam).`, () => app().mail.sendTest(to));
 }
 
 export async function sendSampleEmailAction(form: FormData) {
-  await requireStaff("admin");
+  await requirePermission("settings.email", "edit");
   const to = str(form, "to");
   await act("/admin/settings/email", `Sample email sent to ${to}. Open it to check the design.`, () => app().mail.sendSample(to));
 }
@@ -200,9 +201,17 @@ const SETTINGS_SECTIONS = {
   email: (form: FormData) => ({ emailBranded: form.get("emailBranded") === "on" }),
 } as const;
 export type SettingsSection = keyof typeof SETTINGS_SECTIONS;
+const SETTINGS_FEATURE: Record<SettingsSection, string> = {
+  organization: "settings.organization",
+  "booking-rules": "settings.bookingRules",
+  "booking-page": "settings.bookingPage",
+  payments: "settings.payments",
+  "online-sessions": "settings.onlineSessions",
+  email: "settings.email",
+};
 
 export async function saveSettingsAction(section: SettingsSection, form: FormData) {
-  const me = await requireStaff("admin");
+  const me = await requirePermission(SETTINGS_FEATURE[section], "edit");
   await act(`/admin/settings/${section}`, "Settings saved", async () => {
     await app().settings.updatePart({ staffId: me.id }, SETTINGS_SECTIONS[section](form));
     // The booking ID's number lives in its own counter, not in the settings row.
@@ -218,7 +227,7 @@ const PROFILE_FIELDS = [
 ] as const;
 
 export async function updateClientProfileAction(clientId: string, form: FormData) {
-  const me = await requireStaff("manager");
+  const me = await requirePermission("clients", "edit");
   const profile = Object.fromEntries(PROFILE_FIELDS.map((k) => [k, str(form, k)]));
   // Saved: back to the client. Failed: stay on the form so nothing typed is lost from view.
   await act(`/admin/clients/${clientId}/edit`, "Client saved", async () => {
@@ -234,7 +243,7 @@ export async function updateClientProfileAction(clientId: string, form: FormData
 }
 
 export async function createClientAction(form: FormData) {
-  const me = await requireStaff("manager");
+  const me = await requirePermission("clients", "add");
   await act("/admin/clients/new", "Client added", async () => {
     const created = await app().clients.create({ staffId: me.id }, {
       name: str(form, "name"),
@@ -249,7 +258,7 @@ export async function createClientAction(form: FormData) {
 }
 
 export async function assignTherapistAction(clientId: string, form: FormData) {
-  const me = await requireStaff("manager");
+  const me = await requirePermission("clients", "edit");
   await act(`/admin/clients/${clientId}`, "Therapist assigned", () =>
     app().clients.assignTherapist({ staffId: me.id }, clientId, { staffId: str(form, "staffId"), reason: str(form, "reason") }),
   );
@@ -259,7 +268,7 @@ export type NewApiKeyState ={ key?: string; name?: string; error?: string } | nu
 
 /** Returns the raw key to the form instead of redirecting, so it never lands in a URL or the server logs. */
 export async function createApiKeyAction(_prev: NewApiKeyState, form: FormData): Promise<NewApiKeyState> {
-  await requireStaff("admin");
+  await requirePermission("settings.apiKeys", "edit");
   try {
     // Only these two can be issued from the screen; "staff" keys stay a command-line job.
     const scope = str(form, "scope") === "otp" ? "otp" : "website";
@@ -274,18 +283,18 @@ export async function createApiKeyAction(_prev: NewApiKeyState, form: FormData):
 }
 
 export async function revokeApiKeyAction(id: string) {
-  await requireStaff("admin");
+  await requirePermission("settings.apiKeys", "edit");
   await app().apiKeys.revoke(id);
   redirect("/admin/settings/api?ok=" + encodeURIComponent("API key revoked. Sites using it stop working now"));
 }
 
 export async function addHolidayAction(form: FormData) {
-  const me = await requireStaff("admin");
+  const me = await requirePermission("settings.holidays", "edit");
   await act("/admin/settings/holidays", "Holiday added", () => app().holidays.add({ staffId: me.id }, { date: str(form, "date"), name: str(form, "name") }));
 }
 
 export async function removeHolidayAction(id: string) {
-  const me = await requireStaff("admin");
+  const me = await requirePermission("settings.holidays", "edit");
   await act("/admin/settings/holidays", "Holiday removed", () => app().holidays.remove({ staffId: me.id }, id));
 }
 

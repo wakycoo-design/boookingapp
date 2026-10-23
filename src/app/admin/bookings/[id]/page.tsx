@@ -5,7 +5,7 @@ import { bookingReference } from "@/features/bookings/bookings.dto";
 import { addDays } from "@/features/availability/slots";
 import { isDomainError } from "@/features/shared/errors";
 import { isOnlineSession } from "@/features/bookings/meeting";
-import { requireStaff } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { zonedToUtc } from "@/lib/time";
 import { isoDay, longDayLabel, NO_SHOW_BY_LABEL, PAYMENT_LABEL, timeLabel } from "@/lib/format";
 import { Notice } from "@/components/Notice";
@@ -22,7 +22,7 @@ export default async function BookingPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string; ok?: string; move?: string; date?: string }>;
 }) {
-  await requireStaff();
+  await requirePermission("bookings", "view");
   const { id } = await params;
   const sp = await searchParams;
   const { bookings, availability, settings, staff } = app();

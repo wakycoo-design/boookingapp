@@ -1,6 +1,6 @@
 import { app } from "@/features/container";
 import { isDomainError } from "@/features/shared/errors";
-import { currentStaff, hasRole } from "@/lib/session";
+import { can, currentPermissions, currentStaff } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,8 @@ export async function GET(request: Request) {
   const me = await currentStaff();
   if (!me) return Response.redirect(new URL("/login", request.url), 302);
   const staffId = new URL(request.url).searchParams.get("staff") || me.id;
-  if (staffId !== me.id && !hasRole(me, "manager")) return Response.redirect(new URL("/?error=forbidden", request.url), 302);
+  const perms = await currentPermissions();
+  if (!can(perms, "availability", "edit") || (staffId !== me.id && !can(perms, "availability", "viewAll"))) return Response.redirect(new URL("/?error=forbidden", request.url), 302);
   try {
     return Response.redirect(app().calendar.connectUrl(staffId), 302);
   } catch (err) {

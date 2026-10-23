@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { app } from "@/features/container";
-import { requireStaff } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { Notice } from "@/components/Notice";
 import { PageHeader } from "@/components/Shell";
 import { ServiceFields } from "@/components/ServiceFields";
 import { createServiceAction } from "../actions";
 
 export default async function ServicesPage({ searchParams }: { searchParams: Promise<{ error?: string; ok?: string }> }) {
-  await requireStaff("manager");
+  await requirePermission("services", "view");
   const { error, ok } = await searchParams;
   const rows = await app().catalog.list();
   return (

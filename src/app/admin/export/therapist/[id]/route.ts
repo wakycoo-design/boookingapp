@@ -1,7 +1,7 @@
 import { app } from "@/features/container";
 import { therapistCsv } from "@/features/performance/performance.csv";
 import { isDomainError } from "@/features/shared/errors";
-import { currentStaff, hasRole } from "@/lib/session";
+import { can, currentPermissions, currentStaff } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +10,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const { id } = await params;
   const me = await currentStaff();
   if (!me) return Response.json({ error: { code: "unauthorized", message: "Sign in first" } }, { status: 401 });
-  if (me.id !== id && !hasRole(me, "manager")) return Response.json({ error: { code: "forbidden", message: "Managers only" } }, { status: 403 });
+  const perms = await currentPermissions();
+  if (!can(perms, "reports", me.id === id ? "view" : "viewAll")) return Response.json({ error: { code: "forbidden", message: "Not allowed to see this report" } }, { status: 403 });
   try {
     const detail = await app().performance.therapist({ staffId: id, period: new URL(req.url).searchParams.get("period") ?? undefined });
     const { csv, filename } = therapistCsv(detail, await app().settings.get());

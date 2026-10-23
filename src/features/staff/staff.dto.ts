@@ -9,6 +9,8 @@ export type StaffDTO = {
   name: string;
   email: string;
   role: StaffRole;
+  /** The role on the permissions page (`role` is its base). Null only for rows made before roles existed. */
+  roleId: string | null;
   designation: Designation | null;
   timezone: string;
   active: boolean;

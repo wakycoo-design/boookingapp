@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { app } from "@/features/container";
-import { requireStaff } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { isoDay, longDayLabel } from "@/lib/format";
 import { Notice } from "@/components/Notice";
 import { PageHeader } from "@/components/Shell";
@@ -9,7 +9,7 @@ import { addHolidayAction, removeHolidayAction } from "../../actions";
 export const dynamic = "force-dynamic";
 
 export default async function HolidaysPage({ searchParams }: { searchParams: Promise<{ error?: string; ok?: string }> }) {
-  await requireStaff("admin");
+  await requirePermission("settings.holidays", "view");
   const { error, ok } = await searchParams;
   const s = await app().settings.get();
   const today = isoDay(new Date(), s.timezone);

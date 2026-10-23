@@ -4,7 +4,7 @@ import { app } from "@/features/container";
 import { clientReference } from "@/features/clients/clients.dto";
 import { isDomainError } from "@/features/shared/errors";
 import { isoDay, phoneLabel } from "@/lib/format";
-import { requireStaff } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { Notice } from "@/components/Notice";
 import { PhoneField } from "@/components/PhoneField";
 import { PageHeader } from "@/components/Shell";
@@ -22,7 +22,7 @@ export default async function EditClientPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string }>;
 }) {
-  await requireStaff("manager");
+  await requirePermission("clients", "edit");
   const { id } = await params;
   const { error } = await searchParams;
   const c = await app().clients.get(id).catch((err) => {

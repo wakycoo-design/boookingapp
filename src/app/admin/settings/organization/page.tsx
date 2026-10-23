@@ -1,5 +1,5 @@
 import { app } from "@/features/container";
-import { requireStaff } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { HoursEditor } from "@/components/HoursEditor";
 import { Notice } from "@/components/Notice";
 import { PageHeader } from "@/components/Shell";
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 export default async function OrganizationSettingsPage({ searchParams }: { searchParams: Promise<{ error?: string; ok?: string }> }) {
-  await requireStaff("admin");
+  await requirePermission("settings.organization", "view");
   const { error, ok } = await searchParams;
   const s = await app().settings.get();
   return (

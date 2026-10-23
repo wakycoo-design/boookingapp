@@ -1,5 +1,5 @@
 import { app } from "@/features/container";
-import { requireStaff } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { BookingPrefixField } from "@/components/BookingPrefixField";
 import { Notice } from "@/components/Notice";
 import { PageHeader } from "@/components/Shell";
@@ -8,7 +8,7 @@ import { saveSettingsAction } from "../../actions";
 export const dynamic = "force-dynamic";
 
 export default async function BookingRulesPage({ searchParams }: { searchParams: Promise<{ error?: string; ok?: string }> }) {
-  await requireStaff("admin");
+  await requirePermission("settings.bookingRules", "view");
   const { error, ok } = await searchParams;
   const [s, nextNumber] = await Promise.all([app().settings.get(), app().bookings.nextNumber()]);
   return (

@@ -3,7 +3,7 @@ import { app } from "@/features/container";
 import { DESIGNATIONS } from "@/features/staff/staff.dto";
 import { isDomainError } from "@/features/shared/errors";
 import { addDays, localDate } from "@/features/availability/slots";
-import { requireStaff, hasRole } from "@/lib/session";
+import { can, currentPermissions, hasRole, requireStaff } from "@/lib/session";
 import { formatInZone } from "@/lib/time";
 import { longDayLabel } from "@/lib/format";
 import { HoursEditor } from "@/components/HoursEditor";
@@ -33,8 +33,11 @@ export default async function StaffDetail({
   const { id } = await params;
   const { error, ok } = await searchParams;
   const me = await requireStaff();
-  const isManager = hasRole(me, "manager");
-  if (me.id !== id && !isManager) redirect("/?error=forbidden");
+  const perms = await currentPermissions();
+  // Their own page is their availability; someone else's needs everyone's availability or the staff list.
+  const allowed = me.id === id ? can(perms, "availability", "view") : can(perms, "availability", "viewAll") || can(perms, "staff", "view");
+  if (!allowed) redirect("/?error=forbidden");
+  const isManager = can(perms, "staff", "edit");
 
   const { staff, catalog, schedules } = app();
   const member = await staff.get(id).catch((err) => {
@@ -52,6 +55,7 @@ export default async function StaffDetail({
     app().calendar.status(id),
     staff.servicePrices(id),
   ]);
+  const roles = (await app().access.roles()).filter((r) => r.base !== "admin" || hasRole(me, "admin"));
   const google = calendar.connection;
 
   return (
@@ -183,10 +187,8 @@ export default async function StaffDetail({
             </div>
             <div>
               <label className="label" htmlFor="role">Role</label>
-              <select className="input" id="role" name="role" defaultValue={member.role}>
-                <option value="staff">Staff</option>
-                <option value="manager">Manager</option>
-                <option value="admin">Admin</option>
+              <select className="input" id="role" name="roleId" defaultValue={member.roleId ?? roles.find((r) => r.system && r.base === member.role)?.id}>
+                {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
               </select>
             </div>
             <div><label className="label" htmlFor="timezone">Time zone</label><TimezoneSelect value={member.timezone} /></div>

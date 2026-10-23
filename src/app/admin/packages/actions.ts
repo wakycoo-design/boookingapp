@@ -2,7 +2,7 @@
 
 import { app } from "@/features/container";
 import { act, optional, str } from "@/lib/form-actions";
-import { requireStaff } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 
 /** Rupees typed in a form (commas allowed) as whole paise. */
 const paise = (raw: string) => Math.round(Number(raw.replace(/,/g, "")) * 100);
@@ -21,24 +21,24 @@ function packageFromForm(form: FormData) {
 }
 
 export async function createPackageAction(form: FormData) {
-  const me = await requireStaff("manager");
+  const me = await requirePermission("packages", "add");
   await act("/admin/packages", "Package added", () => app().packages.create({ staffId: me.id }, packageFromForm(form)));
 }
 
 export async function updatePackageAction(id: string, form: FormData) {
-  const me = await requireStaff("manager");
+  const me = await requirePermission("packages", "edit");
   await act("/admin/packages", "Package saved", () => app().packages.update({ staffId: me.id }, id, packageFromForm(form)));
 }
 
 export async function sellPackageAction(clientId: string, form: FormData) {
-  const me = await requireStaff("manager");
+  const me = await requirePermission("packages", "add");
   await act(`/admin/clients/${clientId}?tab=credits`, "Package sold", () =>
     app().packages.sell({ staffId: me.id }, clientId, { packageId: str(form, "packageId"), paymentNote: optional(form, "paymentNote") }),
   );
 }
 
 export async function topUpWalletAction(clientId: string, form: FormData) {
-  const me = await requireStaff("manager");
+  const me = await requirePermission("packages", "add");
   await act(`/admin/clients/${clientId}?tab=credits`, "Wallet money added", () =>
     app().packages.topUp({ staffId: me.id }, clientId, { amountPaise: paise(str(form, "amount")), note: optional(form, "note") }),
   );

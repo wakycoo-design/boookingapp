@@ -1,13 +1,19 @@
 import { signOut } from "@/auth";
+import { app } from "@/features/container";
+import { FEATURES } from "@/features/access/features";
 import type { StaffDTO } from "@/features/staff/staff.dto";
-import { hasRole } from "@/lib/session";
+import { can, currentPermissions } from "@/lib/session";
 import { Icon } from "./icons";
 import { NavLink } from "./NavLink";
 import { SidebarFrame } from "./SidebarFrame";
 
 /** App frame: a black sidebar on the left (cal.com style) and the page on the right. */
-export function Shell({ me, children }: { me: StaffDTO; children: React.ReactNode }) {
-  const manager = hasRole(me, "manager");
+export async function Shell({ me, children }: { me: StaffDTO; children: React.ReactNode }) {
+  // Each menu item shows only for those allowed to view it (Settings, Roles & permissions).
+  const [perms, role] = await Promise.all([currentPermissions(), app().access.roleOf(me)]);
+  const sees = (feature: string) => can(perms, feature, "view");
+  const manages = ["services", "staff", "packages", "clients", "reports", "workflows"].some(sees);
+  const settings = FEATURES.some((f) => f.key.startsWith("settings.") && sees(f.key));
   return (
     <SidebarFrame
       sidebar={
@@ -18,19 +24,19 @@ export function Shell({ me, children }: { me: StaffDTO; children: React.ReactNod
             </div>
             <nav className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible" aria-label="Main">
               <NavLink href="/" icon="home" exact>Today</NavLink>
-              <NavLink href="/admin/bookings" icon="list">Bookings</NavLink>
-              <NavLink href="/admin/calendar" icon="calendar">Calendar</NavLink>
-              <NavLink href={`/admin/staff/${me.id}`} icon="clock">Availability</NavLink>
-              {manager && <p className="nav-heading">Manage</p>}
-              {manager && <NavLink href="/admin/services" icon="grid">Services</NavLink>}
-              {manager && <NavLink href="/admin/staff" icon="users" exact>Staff</NavLink>}
-              {manager && <NavLink href="/admin/packages" icon="wallet">Packages</NavLink>}
-              {manager && <NavLink href="/admin/clients" icon="user">Clients</NavLink>}
-              <NavLink href="/admin/case-histories" icon="file">Case histories</NavLink>
-              {manager && <NavLink href="/admin/reports" icon="chart">Reports</NavLink>}
-              {manager && <NavLink href="/admin/workflows" icon="bolt">Workflows</NavLink>}
-              {hasRole(me, "admin") && <NavLink href="/admin/otp" icon="shield">OTP Authentication</NavLink>}
-              {hasRole(me, "admin") && <NavLink href="/admin/settings" icon="settings">Settings</NavLink>}
+              {sees("bookings") && <NavLink href="/admin/bookings" icon="list">Bookings</NavLink>}
+              {sees("calendar") && <NavLink href="/admin/calendar" icon="calendar">Calendar</NavLink>}
+              {sees("availability") && <NavLink href={`/admin/staff/${me.id}`} icon="clock">Availability</NavLink>}
+              {(manages || sees("caseHistories")) && <p className="nav-heading">Manage</p>}
+              {sees("services") && <NavLink href="/admin/services" icon="grid">Services</NavLink>}
+              {sees("staff") && <NavLink href="/admin/staff" icon="users" exact>Staff</NavLink>}
+              {sees("packages") && <NavLink href="/admin/packages" icon="wallet">Packages</NavLink>}
+              {sees("clients") && <NavLink href="/admin/clients" icon="user">Clients</NavLink>}
+              {sees("caseHistories") && <NavLink href="/admin/case-histories" icon="file">Case histories</NavLink>}
+              {can(perms, "reports", "viewAll") && <NavLink href="/admin/reports" icon="chart">Reports</NavLink>}
+              {sees("workflows") && <NavLink href="/admin/workflows" icon="bolt">Workflows</NavLink>}
+              {sees("otp") && <NavLink href="/admin/otp" icon="shield">OTP Authentication</NavLink>}
+              {settings && <NavLink href="/admin/settings" icon="settings">Settings</NavLink>}
             </nav>
             {/* Closed by default: Sign out only appears after clicking the profile. Plain <details>, no script needed. */}
             <details className="group relative mt-auto hidden border-t border-zinc-200 pt-4 md:block">
@@ -40,7 +46,7 @@ export function Shell({ me, children }: { me: StaffDTO; children: React.ReactNod
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm text-black">{me.name}</span>
-                  <span className="block truncate text-xs capitalize text-zinc-600">{me.role}</span>
+                  <span className="block truncate text-xs text-zinc-600">{role?.name ?? me.role}</span>
                 </span>
                 <span className="text-zinc-500 transition-transform group-open:rotate-180" aria-hidden="true">⌃</span>
               </summary>

@@ -48,6 +48,8 @@ import { PRESETS } from "./workflows/presets";
 import { createSenders } from "./workflows/senders";
 import { createWorkflowsRepository } from "./workflows/workflows.repository";
 import { createWorkflowsService, type Senders } from "./workflows/workflows.service";
+import { createAccessRepository } from "./access/access.repository";
+import { createAccessService } from "./access/access.service";
 import { createCaseHistoryRepository } from "./case-history/case-history.repository";
 import { createCaseHistoryService } from "./case-history/case-history.service";
 
@@ -69,6 +71,8 @@ export function createContainer(db: Db, opts: {
   const appUrl = (opts.appUrl ?? process.env.AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
   const manageSecret = opts.manageSecret ?? process.env.AUTH_SECRET;
   const staffRepo = createStaffRepository(db);
+  const accessRepo = createAccessRepository(db);
+  const access = createAccessService({ accessRepo });
   const catalogRepo = createCatalogRepository(db);
   const settingsRepo = createSettingsRepository(db);
   const bookingsRepo = createBookingsRepository(db);
@@ -109,8 +113,13 @@ export function createContainer(db: Db, opts: {
     });
   };
   return {
+    access,
     staff: createStaffService({
       staffRepo,
+      roles: {
+        baseOf: async (roleId) => (await access.getRole(roleId)).base,
+        builtIn: async (base) => (await accessRepo.systemRole(base))?.id ?? null,
+      },
       async sendResetLink(to, token) {
         const firm = await settingsRepo.get();
         const link = `${appUrl}/reset-password?token=${token}`;

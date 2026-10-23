@@ -1,6 +1,6 @@
 import { app } from "@/features/container";
 import { isReportRangeKey, presetRange, REPORT_RANGES } from "@/features/reports/ranges";
-import { requireStaff } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { dayLabel } from "@/lib/format";
 import { PageHeader } from "@/components/Shell";
 import { ReportsNav } from "@/components/ReportsNav";
@@ -18,7 +18,7 @@ function Stat({ label, value, tone = "text-black", note }: { label: string; valu
 }
 
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string; days?: string; range?: string }> }) {
-  await requireStaff("manager");
+  await requirePermission("reports", "viewAll");
   const sp = await searchParams;
   const { reports, settings } = app();
   const tz = (await settings.get()).timezone;

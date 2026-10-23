@@ -10,7 +10,8 @@ import { addendumInput, followUpInput, intakeSteps, noteEditInput, noteInput, ty
 import { LABEL, overallRisk, type Risk } from "./choices";
 
 /** Who is asking: a signed-in staff member. */
-export type Reader = Pick<StaffDTO, "id" | "role" | "clinicalAdmin"> & { name?: string };
+/** `seesAll`: may list every client (Roles & permissions, Case histories · view all); clinical details still need their therapist or a clinical admin. */
+export type Reader = Pick<StaffDTO, "id" | "role" | "clinicalAdmin"> & { name?: string; seesAll?: boolean };
 
 /** The WhatsApp template Meta must approve for follow-ups (see docs/whatsapp-templates.md). */
 export const FOLLOW_UP_TEMPLATE = "follow_up_suggestion";
@@ -203,7 +204,7 @@ export function createCaseHistoryService({ caseRepo, senders = { email: noSender
      * nor a manager sees only their own clients.
      */
     async list(reader: Reader, f: CaseListFilters = {}): Promise<CaseListRow[]> {
-      const seesEveryone = reader.clinicalAdmin || reader.role !== "staff";
+      const seesEveryone = reader.clinicalAdmin || (reader.seesAll ?? reader.role !== "staff");
       const rows = (await caseRepo.list(f.q?.trim() || undefined))
         .filter((r) => seesEveryone || r.therapistId === reader.id)
         .map((r): CaseListRow => {

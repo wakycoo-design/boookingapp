@@ -1,11 +1,11 @@
 import { app } from "@/features/container";
-import { requireStaff } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 /** Bookings in a date range as a spreadsheet file. Managers and admins only. */
 export async function GET(req: Request) {
-  await requireStaff("manager");
+  await requirePermission("bookings", "export");
   const q = new URL(req.url).searchParams;
   const { csv, filename } = await app().reports.bookingsCsv({ from: q.get("from") ?? undefined, to: q.get("to") ?? undefined });
   return new Response(csv, {

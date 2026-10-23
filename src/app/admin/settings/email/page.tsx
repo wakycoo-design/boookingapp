@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { app } from "@/features/container";
-import { requireStaff } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { Notice } from "@/components/Notice";
 import { PageHeader } from "@/components/Shell";
 import { saveSettingsAction, sendSampleEmailAction, sendTestEmailAction } from "../../actions";
@@ -8,7 +8,7 @@ import { saveSettingsAction, sendSampleEmailAction, sendTestEmailAction } from "
 export const dynamic = "force-dynamic";
 
 export default async function EmailSettingsPage({ searchParams }: { searchParams: Promise<{ error?: string; ok?: string }> }) {
-  const me = await requireStaff("admin");
+  const me = await requirePermission("settings.email", "view");
   const { error, ok } = await searchParams;
   const mail = app().mail.status();
   const s = await app().settings.get();

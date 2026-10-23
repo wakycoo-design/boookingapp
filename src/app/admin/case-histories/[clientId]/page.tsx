@@ -6,7 +6,7 @@ import { LABEL, PART_OF_DAY } from "@/features/case-history/choices";
 import { clientReference } from "@/features/clients/clients.dto";
 import { isDomainError } from "@/features/shared/errors";
 import { dateLabel, dayLabel, isoDay, timeLabel } from "@/lib/format";
-import { requireStaff } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { Initials, RiskBadge, StatusBadge } from "@/components/CaseBadges";
 import { Notice } from "@/components/Notice";
 import { NoteFields, SessionNoteCard } from "@/components/SessionNote";
@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Case history" };
 
 export default async function CasePage({ params, searchParams }: { params: Promise<{ clientId: string }>; searchParams: Promise<{ ok?: string; error?: string }> }) {
-  const me = await requireStaff();
+  const me = await requirePermission("caseHistories", "view");
   const { clientId } = await params;
   const sp = await searchParams;
   let record: CaseRecordDTO;

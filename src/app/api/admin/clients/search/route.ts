@@ -1,5 +1,5 @@
 import { app } from "@/features/container";
-import { currentStaff, hasRole } from "@/lib/session";
+import { can, currentPermissions, currentStaff } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   const me = await currentStaff();
   if (!me) return Response.json({ error: { code: "unauthorized", message: "Sign in first" } }, { status: 401 });
-  if (!hasRole(me, "manager")) return Response.json({ error: { code: "forbidden", message: "Only managers can look up clients" } }, { status: 403 });
+  if (!can(await currentPermissions(), "clients", "view")) return Response.json({ error: { code: "forbidden", message: "Not allowed to look up clients" } }, { status: 403 });
   const q = (new URL(req.url).searchParams.get("q") ?? "").trim();
   if (q.length < 1) return Response.json({ data: [] });
   const rows = await app().clients.list({ q, limit: 15, relevance: true });

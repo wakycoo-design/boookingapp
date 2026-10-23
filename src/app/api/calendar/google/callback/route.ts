@@ -1,6 +1,6 @@
 import { app } from "@/features/container";
 import { isDomainError } from "@/features/shared/errors";
-import { currentStaff, hasRole } from "@/lib/session";
+import { can, currentPermissions, currentStaff } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +18,8 @@ export async function GET(request: Request) {
   try {
     const owner = app().calendar.stateOwner(state);
     // The link is signed, but also make sure it is the person it was made for (or their manager) finishing it.
-    if (!owner || (owner !== me.id && !hasRole(me, "manager"))) {
+    const perms = await currentPermissions();
+    if (!owner || !can(perms, "availability", "edit") || (owner !== me.id && !can(perms, "availability", "viewAll"))) {
       return go(`/admin/staff/${me.id}`, "error", "This connect link has expired or is not valid; start again");
     }
     if (url.searchParams.get("error") || !code) return go(`/admin/staff/${owner}`, "error", "Google Calendar was not connected: access was not granted");

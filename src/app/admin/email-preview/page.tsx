@@ -1,14 +1,14 @@
 import { app } from "@/features/container";
 import { renderBrandedEmail, SAMPLE_VARS } from "@/features/workflows/email-design";
 import { PRESETS } from "@/features/workflows/presets";
-import { requireStaff } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { PageHeader } from "@/components/Shell";
 
 export const dynamic = "force-dynamic";
 
 /** The confirmation email as clients will see it, with made-up details. */
 export default async function EmailPreviewPage() {
-  await requireStaff("admin");
+  await requirePermission("settings.email", "view");
   const { settings, workflows } = app();
   const firm = await settings.get();
   const own = (await workflows.list()).find((w) => w.channel === "email" && w.trigger === "booked" && w.active);

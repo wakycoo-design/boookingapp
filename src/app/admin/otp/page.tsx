@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { app } from "@/features/container";
 import { OTP_STATUSES, OTP_STATUS_LABEL, type OtpStatus } from "@/features/otp/otp.dto";
-import { requireStaff } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { NewApiKeyForm } from "@/components/NewApiKeyForm";
 import { PageHeader } from "@/components/Shell";
 import { revokeApiKeyAction } from "../actions";
@@ -21,7 +21,7 @@ type Search = { status?: string; q?: string; page?: string };
 
 export default async function OtpPage({ searchParams }: { searchParams: Promise<Search> }) {
   // Admin only, checked here and not just in the sidebar.
-  await requireStaff("admin");
+  await requirePermission("otp", "view");
   const sp = await searchParams;
   const status = OTP_STATUSES.find((s) => s === sp.status);
   const q = sp.q?.trim() || undefined;

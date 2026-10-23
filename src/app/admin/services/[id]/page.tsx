@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { app } from "@/features/container";
 import { isDomainError } from "@/features/shared/errors";
-import { requireStaff } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { Notice } from "@/components/Notice";
 import { PageHeader } from "@/components/Shell";
 import { ServiceFields } from "@/components/ServiceFields";
@@ -14,7 +14,7 @@ export default async function ServiceDetail({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string; ok?: string }>;
 }) {
-  await requireStaff("manager");
+  await requirePermission("services", "view");
   const { id } = await params;
   const { error, ok } = await searchParams;
   const s = await app().catalog.get(id).catch((err) => {

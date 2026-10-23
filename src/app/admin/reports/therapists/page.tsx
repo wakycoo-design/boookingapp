@@ -4,7 +4,7 @@ import { PERIODS } from "@/features/performance/performance.dto";
 import { isPeriodKey } from "@/features/performance/performance.periods";
 import type { RetentionStep, TherapistReport } from "@/features/performance/performance.dto";
 import { RETENTION_STEPS } from "@/features/performance/kpis";
-import { requireStaff } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { PageHeader } from "@/components/Shell";
 import { ReportsNav } from "@/components/ReportsNav";
 
@@ -56,7 +56,7 @@ function Row({ t, period }: { t: TherapistReport; period: string }) {
 }
 
 export default async function TherapistPerformancePage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
-  await requireStaff("manager");
+  await requirePermission("reports", "viewAll");
   const { period } = await searchParams;
   const report = await app().performance.report({ period });
   const active = isPeriodKey(period) ? period : report.period;

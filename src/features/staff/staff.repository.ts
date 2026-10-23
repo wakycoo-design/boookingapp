@@ -11,6 +11,7 @@ const columns = {
   name: staff.name,
   email: staff.email,
   role: staff.role,
+  roleId: staff.roleId,
   designation: staff.designation,
   timezone: staff.timezone,
   active: staff.active,

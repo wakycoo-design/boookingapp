@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { app } from "@/features/container";
 import { CHANNEL_LABEL, KIND_LABEL, kindOf, whenLabel, type WorkflowKind } from "@/features/workflows/workflows.dto";
-import { hasRole, requireStaff } from "@/lib/session";
+import { can, requirePermission } from "@/lib/session";
 import { Notice } from "@/components/Notice";
 import { PageHeader } from "@/components/Shell";
 import { toggleWorkflowAction } from "./actions";
@@ -9,14 +9,15 @@ import { toggleWorkflowAction } from "./actions";
 export const dynamic = "force-dynamic";
 
 export default async function WorkflowsPage({ searchParams }: { searchParams: Promise<{ error?: string; ok?: string; type?: string }> }) {
-  const me = await requireStaff("manager");
+  const me = await requirePermission("workflows", "view");
   const { error, ok, type } = await searchParams;
   const kind: WorkflowKind = type === "system" ? "system" : "notification";
   const [all, services] = await Promise.all([app().workflows.list(), app().catalog.list()]);
   const workflows = all.filter((w) => kindOf(w.channel) === kind);
   const count = (k: WorkflowKind) => all.filter((w) => kindOf(w.channel) === k).length;
   const names = new Map(services.map((s) => [s.id, s.name]));
-  const admin = hasRole(me, "admin");
+  const admin = can(me.permissions, "workflows", "add");
+  const canEdit = can(me.permissions, "workflows", "edit");
   return (
     <>
       <PageHeader
@@ -55,7 +56,7 @@ export default async function WorkflowsPage({ searchParams }: { searchParams: Pr
                   <td>{CHANNEL_LABEL[w.channel]}</td>
                   <td className="text-zinc-600">{w.serviceIds.length ? w.serviceIds.map((id) => names.get(id) ?? "Removed service").join(", ") : "All services"}</td>
                   <td>
-                    {admin ? (
+                    {canEdit ? (
                       <form action={toggleWorkflowAction.bind(null, w.id)}>
                         <button className={`badge ${w.active ? "border-green-600/40 text-green-700" : "text-zinc-600"}`} type="submit" title={w.active ? "Click to switch off" : "Click to switch on"}>
                           {w.active ? "Active" : "Off"}

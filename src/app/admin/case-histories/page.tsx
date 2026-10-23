@@ -5,7 +5,7 @@ import { LABEL, RISK, type Risk } from "@/features/case-history/choices";
 import { clientReference } from "@/features/clients/clients.dto";
 import { dayRange } from "@/lib/day-range";
 import { dateLabel } from "@/lib/format";
-import { requireStaff } from "@/lib/session";
+import { can, requirePermission } from "@/lib/session";
 import { Initials, RiskBadge, StatusBadge } from "@/components/CaseBadges";
 
 export const dynamic = "force-dynamic";
@@ -14,13 +14,13 @@ export const metadata = { title: "Case histories" };
 const CHIPS: [string, string][] = [["", "All"], ["intake_pending", "Intake pending"], ["in_treatment", "In treatment"], ["concluded", "Concluded"], ["high_risk", "High risk"]];
 
 export default async function CaseHistoriesPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; therapist?: string; risk?: string; from?: string; to?: string }> }) {
-  const me = await requireStaff();
+  const me = await requirePermission("caseHistories", "view");
   const sp = await searchParams;
   const risk = RISK.includes(sp.risk as Risk) ? (sp.risk as Risk) : undefined;
   const s = await app().settings.get();
   const range = dayRange(sp.from, sp.to, s.timezone);
   const base: CaseListFilters = { q: sp.q, therapist: sp.therapist || undefined, risk, ...range };
-  const [rows, team] = await Promise.all([app().caseHistory.list(me, base), app().staff.list()]);
+  const [rows, team] = await Promise.all([app().caseHistory.list({ ...me, seesAll: can(me.permissions, "caseHistories", "viewAll") }, base), app().staff.list()]);
   const filters = [sp.therapist, risk, range.from || range.to].filter(Boolean).length;
   const statusOf = (key: string) => (r: (typeof rows)[number]) => !key || (key === "high_risk" ? r.risk === "high" : r.status === (key as CaseStatus));
   const status = CHIPS.some(([k]) => k === sp.status) ? sp.status ?? "" : "";

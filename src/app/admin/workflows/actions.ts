@@ -6,7 +6,7 @@ import { ZodError } from "zod";
 import { app } from "@/features/container";
 import { isDomainError } from "@/features/shared/errors";
 import { act } from "@/lib/form-actions";
-import { requireStaff } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { kindOf } from "@/features/workflows/workflows.dto";
 import { toWorkflowInput, type WorkflowInput } from "@/features/workflows/workflows.schemas";
 
@@ -14,7 +14,7 @@ export type SaveState = { error?: string } | null;
 
 /** Returns the error to the form (instead of redirecting) so nothing the admin typed is lost. */
 export async function saveWorkflowAction(id: string | null, _prev: SaveState, form: FormData): Promise<SaveState> {
-  const me = await requireStaff("admin");
+  const me = await requirePermission("workflows", "edit");
   let tab = "notification";
   try {
     const input = JSON.parse(String(form.get("payload") ?? "{}")) as WorkflowInput;
@@ -32,7 +32,7 @@ export async function saveWorkflowAction(id: string | null, _prev: SaveState, fo
 }
 
 export async function toggleWorkflowAction(id: string) {
-  const me = await requireStaff("admin");
+  const me = await requirePermission("workflows", "edit");
   await act("/admin/workflows", "Saved", async () => {
     const w = await app().workflows.get(id);
     await app().workflows.update({ staffId: me.id }, id, { ...toWorkflowInput(w), active: !w.active });
@@ -41,7 +41,7 @@ export async function toggleWorkflowAction(id: string) {
 }
 
 export async function deleteWorkflowAction(id: string) {
-  const me = await requireStaff("admin");
+  const me = await requirePermission("workflows", "delete");
   await act("/admin/workflows", "Workflow deleted", async () => {
     const w = await app().workflows.get(id);
     await app().workflows.remove({ staffId: me.id }, id);

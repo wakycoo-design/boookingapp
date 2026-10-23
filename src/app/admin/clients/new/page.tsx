@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { app } from "@/features/container";
-import { requireStaff } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { Notice } from "@/components/Notice";
 import { PhoneField } from "@/components/PhoneField";
 import { PageHeader } from "@/components/Shell";
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "New client" };
 
 export default async function NewClientPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  await requireStaff("manager");
+  await requirePermission("clients", "add");
   const { error } = await searchParams;
   const team = (await app().staff.list()).filter((m) => m.active);
   return (

@@ -3,13 +3,13 @@ import { app } from "@/features/container";
 import { clientReference } from "@/features/clients/clients.dto";
 import { dayRange } from "@/lib/day-range";
 import { phoneLabel } from "@/lib/format";
-import { requireStaff } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { PageHeader } from "@/components/Shell";
 
 export const dynamic = "force-dynamic";
 
 export default async function ClientsPage({ searchParams }: { searchParams: Promise<{ q?: string; from?: string; to?: string }> }) {
-  await requireStaff("manager");
+  await requirePermission("clients", "view");
   const { q, from, to } = await searchParams;
   const tz = (await app().settings.get()).timezone;
   const range = dayRange(from, to, tz);

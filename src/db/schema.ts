@@ -84,11 +84,33 @@ export const business = pgTable("business", {
   updatedAt: updatedAt(),
 }, (t) => [check("business_single_row", sql`${t.id} = 1`)]);
 
+/**
+ * Roles for the Roles & permissions page. The three built-in roles (system) map one to one to the base roles; a custom
+ * role starts from a base and follows that base's defaults for anything an admin hasn't changed.
+ */
+export const role = pgTable("role", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull().unique(),
+  base: staffRole("base").notNull(),
+  system: boolean("system").notNull().default(false),
+  createdAt: createdAt(),
+});
+
+/** Only what an admin changed from the defaults. A missing row means "as the base role's default". */
+export const rolePermission = pgTable("role_permission", {
+  roleId: uuid("role_id").notNull().references(() => role.id, { onDelete: "cascade" }),
+  feature: text("feature").notNull(),
+  action: text("action").notNull(),
+  allowed: boolean("allowed").notNull(),
+}, (t) => [primaryKey({ columns: [t.roleId, t.feature, t.action] })]);
+
 export const staff = pgTable("staff", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   email: text("email").notNull(),
   role: staffRole("role").notNull().default("staff"),
+  /** The role on the permissions page; `role` above is always that role's base. */
+  roleId: uuid("role_id").references(() => role.id),
   /** Profession shown beside their name; null = not set. The allowed values live in DESIGNATIONS (staff.dto.ts). */
   designation: text("designation").$type<"Psychiatrist" | "Psychologist" | "Nutritionist" | "Sales Executive">(),
   timezone: text("timezone").notNull().default("Asia/Kolkata"),

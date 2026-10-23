@@ -3,7 +3,7 @@ import type { Actor } from "@/features/audit/audit.types";
 import { DomainError } from "@/features/shared/errors";
 import { decoyHash, hashPassword, verifyPassword } from "@/lib/password";
 import { isUuid } from "@/features/shared/validation";
-import type { StaffDTO } from "./staff.dto";
+import type { StaffDTO, StaffRole } from "./staff.dto";
 import type { StaffRepository } from "./staff.repository";
 import { staffInput, type StaffInput } from "./staff.schemas";
 
@@ -13,8 +13,11 @@ const sha256 = (text: string) => createHash("sha256").update(text).digest("hex")
 export function createStaffService({
   staffRepo,
   sendResetLink,
+  roles,
 }: {
   staffRepo: StaffRepository;
+  /** Keeps a person's role and its base in step. Left out in a few narrow tests. */
+  roles?: { baseOf: (roleId: string) => Promise<StaffRole>; builtIn: (base: StaffRole) => Promise<string | null> };
   /** Emails the "choose a new password" link. Left out where no mail is set up (the request then does nothing visible). */
   sendResetLink?: (to: { name: string; email: string }, token: string) => Promise<void>;
 }) {
@@ -24,8 +27,16 @@ export function createStaffService({
     return row;
   }
 
+  /** A role id sets the base; a base alone gets its built-in role. */
+  async function withRole<T extends { role?: StaffRole; roleId?: string | null }>(data: T): Promise<T> {
+    if (!roles) return data;
+    if (data.roleId) return { ...data, role: await roles.baseOf(data.roleId) };
+    if (data.role) return { ...data, roleId: await roles.builtIn(data.role) };
+    return data;
+  }
+
   async function create(actor: Actor, input: StaffInput): Promise<StaffDTO> {
-    const data = staffInput.parse(input);
+    const data = await withRole(staffInput.parse(input));
     if (await staffRepo.findByEmail(data.email)) {
       throw new DomainError("conflict", `A staff member with email ${data.email} already exists`);
     }
@@ -38,7 +49,7 @@ export function createStaffService({
   }
 
   async function update(actor: Actor, id: string, input: Partial<StaffInput>): Promise<StaffDTO> {
-    const data = staffInput.partial().parse(input);
+    const data = await withRole(staffInput.partial().parse(input));
     await get(id);
     if (data.email) {
       const other = await staffRepo.findByEmail(data.email);

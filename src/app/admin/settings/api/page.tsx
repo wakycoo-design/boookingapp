@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { app } from "@/features/container";
-import { requireStaff } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { Notice } from "@/components/Notice";
 import { NewApiKeyForm } from "@/components/NewApiKeyForm";
 import { PageHeader } from "@/components/Shell";
@@ -9,7 +9,7 @@ import { revokeApiKeyAction } from "../../actions";
 export const dynamic = "force-dynamic";
 
 export default async function ApiSettingsPage({ searchParams }: { searchParams: Promise<{ error?: string; ok?: string }> }) {
-  await requireStaff("admin");
+  await requirePermission("settings.apiKeys", "view");
   const { error, ok } = await searchParams;
   const [keys, settings] = await Promise.all([app().apiKeys.list(), app().settings.get()]);
   const when = (d: Date | null) => (d ? d.toLocaleString("en-IN", { timeZone: settings.timezone, dateStyle: "medium", timeStyle: "short" }) : "Never");

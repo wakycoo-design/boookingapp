@@ -2,7 +2,7 @@ import Link from "next/link";
 import { app } from "@/features/container";
 import { kindOf } from "@/features/workflows/workflows.dto";
 import { PRESETS } from "@/features/workflows/presets";
-import { requireStaff } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { PageHeader } from "@/components/Shell";
 import { WorkflowForm } from "@/components/WorkflowForm";
 import { saveWorkflowAction } from "../actions";
@@ -10,7 +10,7 @@ import { saveWorkflowAction } from "../actions";
 export const dynamic = "force-dynamic";
 
 export default async function NewWorkflowPage({ searchParams }: { searchParams: Promise<{ preset?: string; kind?: string }> }) {
-  await requireStaff("admin");
+  await requirePermission("workflows", "add");
   const { preset, kind } = await searchParams;
   const chosen = PRESETS.find((p) => p.key === preset);
   const services = (await app().catalog.list({ activeOnly: true })).map((s) => ({ id: s.id, name: s.name }));

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { app } from "@/features/container";
 import type { RunStatus } from "@/features/workflows/workflows.dto";
 import { toWorkflowInput } from "@/features/workflows/workflows.schemas";
-import { requireStaff } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { bookingReference } from "@/features/bookings/bookings.dto";
 import { Notice } from "@/components/Notice";
 import { PageHeader } from "@/components/Shell";
@@ -26,7 +26,7 @@ export default async function WorkflowPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string; ok?: string }>;
 }) {
-  await requireStaff("admin");
+  await requirePermission("workflows", "edit");
   const [{ id }, { error, ok }] = await Promise.all([params, searchParams]);
   const { workflows, catalog, settings } = app();
   const [w, runs, services, s] = await Promise.all([workflows.get(id), workflows.runs(id, 50), catalog.list(), settings.get()]);

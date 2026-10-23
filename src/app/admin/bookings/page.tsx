@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { app } from "@/features/container";
 import { addDays } from "@/features/availability/slots";
-import { hasRole, requireStaff } from "@/lib/session";
+import { can, requirePermission } from "@/lib/session";
 import { zonedToUtc } from "@/lib/time";
 import { BookingsTable } from "@/components/BookingsTable";
 import { ColumnsManager } from "@/components/ColumnsManager";
@@ -28,11 +28,13 @@ const oneOf = <T extends string>(list: readonly (readonly [T, string])[], v?: st
 type Params = { view?: string; staff?: string; service?: string; payment?: string; package?: string; from?: string; to?: string; error?: string; ok?: string };
 
 export default async function BookingsPage({ searchParams }: { searchParams: Promise<Params> }) {
-  const me = await requireStaff();
+  const me = await requirePermission("bookings", "view");
+  // Without "view everyone's", only their own, whatever the address asks for.
+  const seesAll = can(me.permissions, "bookings", "viewAll");
   const sp = await searchParams;
   const view: View = VIEWS.some(([v]) => v === sp.view) ? (sp.view as View) : "upcoming";
   // Staff see their own diary by default; anyone can switch to the whole firm (front desk).
-  const staffFilter = sp.staff === "all" ? null : sp.staff || (hasRole(me, "manager") ? null : me.id);
+  const staffFilter = !seesAll ? me.id : sp.staff === "all" ? null : sp.staff || null;
   const { bookings, catalog, staff, settings, preferences } = app();
   const [people, services, s, savedColumns] = await Promise.all([
     staff.list(),
@@ -65,7 +67,7 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
     limit: 200,
   });
   const columns = resolveColumns(savedColumns, "bookings");
-  const active = [serviceId, payment, packageBalance, fromDay, toDay, staffFilter && hasRole(me, "manager") ? staffFilter : undefined].filter(Boolean).length;
+  const active = [serviceId, payment, packageBalance, fromDay, toDay, staffFilter && seesAll ? staffFilter : undefined].filter(Boolean).length;
   const keep = { staff: staffFilter ?? "all", service: serviceId, payment, package: packageBalance, from: fromDay, to: toDay };
   const link = (v: View) => `/admin/bookings?${new URLSearchParams({ view: v, ...Object.fromEntries(Object.entries(keep).filter(([, x]) => x)) as Record<string, string> })}`;
 

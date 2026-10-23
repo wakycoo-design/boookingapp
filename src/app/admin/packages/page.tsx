@@ -1,5 +1,5 @@
 import { app } from "@/features/container";
-import { requireStaff } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { Notice } from "@/components/Notice";
 import { PageHeader } from "@/components/Shell";
 import { createPackageAction, updatePackageAction } from "./actions";
@@ -43,7 +43,7 @@ function Fields({ services, p }: { services: Services; p?: Pkg }) {
 }
 
 export default async function PackagesPage({ searchParams }: { searchParams: Promise<{ error?: string; ok?: string }> }) {
-  await requireStaff("manager");
+  await requirePermission("packages", "view");
   const { error, ok } = await searchParams;
   const [packages, services] = await Promise.all([app().packages.list(), app().catalog.list()]);
   const nameOf = new Map(services.map((s) => [s.id, s.name]));

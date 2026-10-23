@@ -6,7 +6,7 @@ import { AFFECT, COOPERATION, INSIGHT, JUDGEMENT, LABEL, ONSET, RAPPORT, RISK, S
 import { ICD11 } from "@/features/case-history/icd11";
 import { clientReference } from "@/features/clients/clients.dto";
 import { isDomainError } from "@/features/shared/errors";
-import { requireStaff } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { Notice } from "@/components/Notice";
 import { saveIntakeAction } from "../../actions";
 
@@ -70,7 +70,7 @@ const FIELDS: Record<number, Field[]> = {
 };
 
 export default async function IntakePage({ params, searchParams }: { params: Promise<{ clientId: string }>; searchParams: Promise<{ step?: string; ok?: string; error?: string }> }) {
-  const me = await requireStaff();
+  const me = await requirePermission("caseHistories", "view");
   const { clientId } = await params;
   const sp = await searchParams;
   const step = Math.min(6, Math.max(1, Number(sp.step) || 1));

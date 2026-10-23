@@ -2,7 +2,7 @@ import Link from "next/link";
 import { app } from "@/features/container";
 import { isUuid } from "@/features/shared/validation";
 import { addDays } from "@/features/availability/slots";
-import { hasRole, requireStaff } from "@/lib/session";
+import { can, requirePermission } from "@/lib/session";
 import { zonedToUtc } from "@/lib/time";
 import { isoDay, longDayLabel, timeLabel } from "@/lib/format";
 import { ClientFields } from "@/components/ClientFields";
@@ -21,7 +21,7 @@ export default async function NewBookingPage({
 }: {
   searchParams: Promise<{ service?: string; staff?: string; date?: string; start?: string; client?: string; error?: string }>;
 }) {
-  const me = await requireStaff();
+  const me = await requirePermission("bookings", "add");
   const sp = await searchParams;
   const { catalog, staff, availability, settings } = app();
   const [services, s] = await Promise.all([catalog.list({ activeOnly: true }), settings.get()]);
@@ -32,7 +32,7 @@ export default async function NewBookingPage({
   const staffId = sp.staff && people.some((p) => p.id === sp.staff) ? sp.staff : "";
   const svc = services.find((x) => x.id === serviceId);
   // Opened from a client's page: their details fill the form. Only for managers, who can already search clients here.
-  const client = sp.client && isUuid(sp.client) && hasRole(me, "manager") ? await app().clients.get(sp.client).catch(() => null) : null;
+  const client = sp.client && isUuid(sp.client) && can(me.permissions, "clients", "view") ? await app().clients.get(sp.client).catch(() => null) : null;
 
   const slots = serviceId && people.length
     ? (
@@ -120,7 +120,7 @@ export default async function NewBookingPage({
               <input type="hidden" name="staffId" value={staffId} />
               <input type="hidden" name="start" value={chosen.start.toISOString()} />
               <input type="hidden" name="date" value={date} />
-              <ClientFields canSearch={hasRole(me, "manager")} initial={client && { id: client.id, name: client.name, phone: client.phoneE164, email: client.email, whatsappOptIn: client.whatsappOptIn }} />
+              <ClientFields canSearch={can(me.permissions, "clients", "view")} initial={client && { id: client.id, name: client.name, phone: client.phoneE164, email: client.email, whatsappOptIn: client.whatsappOptIn }} />
               <QuestionFields questions={svc.questions} />
               <div className="sm:col-span-2"><label className="label" htmlFor="notes">Notes</label><textarea className="input" id="notes" name="notes" rows={2} placeholder="Only staff see these" /></div>
               <div className="sm:col-span-2"><button className="btn-success" type="submit">Confirm booking</button></div>

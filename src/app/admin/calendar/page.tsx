@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { app } from "@/features/container";
 import { addDays } from "@/features/availability/slots";
-import { hasRole, requireStaff } from "@/lib/session";
+import { can, requirePermission } from "@/lib/session";
 import { zonedToUtc } from "@/lib/time";
 import { dayLabel, isoDay, timeLabel } from "@/lib/format";
 import { PageHeader } from "@/components/Shell";
@@ -16,7 +16,9 @@ const HOUR_PX = 56;
 const mondayOf = (date: string) => addDays(date, -((new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7));
 
 export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ week?: string; staff?: string }> }) {
-  const me = await requireStaff();
+  const me = await requirePermission("calendar", "view");
+  // Without "view everyone's", only their own, whatever the address asks for.
+  const seesAll = can(me.permissions, "calendar", "viewAll");
   const sp = await searchParams;
   const { bookings, staff, settings } = app();
   const s = await settings.get();
@@ -24,7 +26,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const today = isoDay(new Date(), tz);
   const monday = mondayOf(sp.week && /^\d{4}-\d{2}-\d{2}$/.test(sp.week) ? sp.week : today);
   const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
-  const staffFilter = sp.staff === "all" ? null : sp.staff || (hasRole(me, "manager") ? null : me.id);
+  const staffFilter = !seesAll ? me.id : sp.staff === "all" ? null : sp.staff || null;
   const [rows, people] = await Promise.all([
     bookings.list({
       view: "all",

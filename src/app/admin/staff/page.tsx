@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { app } from "@/features/container";
-import { requireStaff, hasRole } from "@/lib/session";
+import { hasRole, requirePermission } from "@/lib/session";
 import { Notice } from "@/components/Notice";
 import { PageHeader } from "@/components/Shell";
 import { TimezoneSelect } from "@/components/TimezoneSelect";
@@ -8,9 +8,13 @@ import { DESIGNATIONS } from "@/features/staff/staff.dto";
 import { createStaffAction } from "../actions";
 
 export default async function StaffPage({ searchParams }: { searchParams: Promise<{ error?: string; ok?: string }> }) {
-  const me = await requireStaff("manager");
+  const me = await requirePermission("staff", "view");
   const { error, ok } = await searchParams;
-  const rows = await app().staff.list();
+  const [rows, allRoles] = await Promise.all([app().staff.list(), app().access.roles()]);
+  const roles = allRoles.filter((r) => r.base !== "admin" || hasRole(me, "admin"));
+  const staffRole = roles.find((r) => r.system && r.base === "staff")?.id;
+  const roleName = (s: { role: string; roleId: string | null }) =>
+    allRoles.find((r) => r.id === s.roleId)?.name ?? allRoles.find((r) => r.system && r.base === s.role)?.name ?? s.role;
   return (
     <>
       <PageHeader title="Staff" subtitle="People who can sign in and be booked." />
@@ -26,7 +30,7 @@ export default async function StaffPage({ searchParams }: { searchParams: Promis
                 <td><Link className="row-link-target font-medium" href={`/admin/staff/${s.id}`}>{s.name}</Link></td>
                 <td className="text-zinc-600">{s.email}</td>
                 <td className="text-zinc-600">{s.designation ?? "–"}</td>
-                <td className="capitalize">{s.role}</td>
+                <td>{roleName(s)}</td>
                 <td className="text-zinc-600">{s.timezone}</td>
                 <td><span className="badge">{s.active ? "Active" : "Inactive"}</span></td>
               </tr>
@@ -49,10 +53,8 @@ export default async function StaffPage({ searchParams }: { searchParams: Promis
           </div>
           <div>
             <label className="label" htmlFor="role">Role</label>
-            <select className="input" id="role" name="role" defaultValue="staff">
-              <option value="staff">Staff</option>
-              <option value="manager">Manager</option>
-              {hasRole(me, "admin") && <option value="admin">Admin</option>}
+            <select className="input" id="role" name="roleId" defaultValue={staffRole}>
+              {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
             </select>
           </div>
           <div><label className="label" htmlFor="timezone">Time zone</label><TimezoneSelect /></div>
