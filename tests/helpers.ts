@@ -17,6 +17,8 @@ export async function reset() {
   // Built-in roles stay (the migration made them); custom roles and changed ticks go.
   await db.execute(sql`delete from role_permission`);
   await db.execute(sql`delete from inbox_item`);
+  await db.execute(sql`delete from conversation`);
+  await db.execute(sql`insert into conversation (kind, title) values ('everyone', 'Everyone')`);
   await db.execute(sql`delete from role where not system`);
   await db.execute(sql`update business set email_branded = false, slot_interval_min = 30, in_app_events = null`);
 }

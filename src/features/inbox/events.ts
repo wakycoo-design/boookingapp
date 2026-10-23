@@ -14,6 +14,7 @@ export const INBOX_EVENTS: InboxEvent[] = [
   { key: "staff.on_leave", group: "Staff", label: "On leave", defaultOn: true },
   { key: "client.created", group: "Client", label: "Added", defaultOn: false },
   { key: "client.edited", group: "Client", label: "Edited", defaultOn: false },
+  { key: "message.mention", group: "Messages", label: "Mentioned", defaultOn: true },
   { key: "payment.success", group: "Payment", label: "Success", defaultOn: true },
   { key: "payment.failure", group: "Payment", label: "Failure", defaultOn: true },
 ];

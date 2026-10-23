@@ -443,6 +443,13 @@ export function createBookingsService(deps: {
       return get(id);
     },
 
+    /** A booking by its reference as people say it (e.g. "WZ7801007" with prefix "WZ780"), or null. */
+    async byReference(reference: string, prefix: string): Promise<BookingDTO | null> {
+      const ref = reference.trim().toUpperCase();
+      const digits = ref.startsWith(prefix.toUpperCase()) ? ref.slice(prefix.length) : ref;
+      return /^\d{1,12}$/.test(digits) ? bookingsRepo.findByNumber(Number(digits)) : null;
+    },
+
     /** What the next booking's number will be; a booking attempt that fails can still use one up. */
     nextNumber: () => bookingsRepo.nextNumber(),
 

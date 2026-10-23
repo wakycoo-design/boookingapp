@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { AFFECT, CASE_STATUS, COOPERATION, DELIVERY, INSIGHT, JUDGEMENT, ONSET, PART_OF_DAY, PROGRESS, RAPPORT, RESPONSE, RISK, SEVERITY } from "../features/case-history/choices";
 import {
   bigint,
+  customType,
   boolean,
   check,
   date,
@@ -777,3 +778,54 @@ export const inboxItem = pgTable("inbox_item", {
   createdAt: createdAt(),
   readAt: timestamp("read_at", { withTimezone: true }),
 }, (t) => [index("inbox_item_staff_idx").on(t.staffId, t.createdAt)]);
+
+/** Raw file bytes (bytea), for message attachments. */
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
+
+/**
+ * Team messages. direct = two people, group = chosen people, everyone = all active staff, role = everyone with one role.
+ * Members of everyone/role conversations are worked out when asked, so new hires join and leavers drop out by themselves.
+ */
+export const conversation = pgTable("conversation", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  kind: text("kind").notNull(),
+  title: text("title"),
+  roleId: uuid("role_id").references(() => role.id, { onDelete: "cascade" }),
+  /** "staffA:staffB" (sorted) for a direct conversation, so two people have exactly one. */
+  directKey: text("direct_key").unique(),
+  createdBy: uuid("created_by").references(() => staff.id),
+  createdAt: createdAt(),
+  lastMessageAt: timestamp("last_message_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [check("conversation_kind", sql`${t.kind} in ('direct', 'group', 'everyone', 'role')`)]);
+
+/** Who is in a direct or group conversation, and for every kind how far each person has read (seen by). */
+export const conversationMember = pgTable("conversation_member", {
+  conversationId: uuid("conversation_id").notNull().references(() => conversation.id, { onDelete: "cascade" }),
+  staffId: uuid("staff_id").notNull().references(() => staff.id, { onDelete: "cascade" }),
+  /** False for a row that only records reading (everyone/role conversations). */
+  listed: boolean("listed").notNull().default(true),
+  lastReadAt: timestamp("last_read_at", { withTimezone: true }),
+  joinedAt: createdAt(),
+}, (t) => [primaryKey({ columns: [t.conversationId, t.staffId] })]);
+
+export const message = pgTable("message", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  conversationId: uuid("conversation_id").notNull().references(() => conversation.id, { onDelete: "cascade" }),
+  senderId: uuid("sender_id").notNull().references(() => staff.id),
+  body: text("body").notNull().default(""),
+  /** A client or booking the message points at; opening it still follows the usual access rules. */
+  clientId: uuid("client_id").references(() => client.id, { onDelete: "set null" }),
+  bookingId: uuid("booking_id").references(() => booking.id, { onDelete: "set null" }),
+  createdAt: createdAt(),
+  editedAt: timestamp("edited_at", { withTimezone: true }),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+}, (t) => [index("message_conversation_idx").on(t.conversationId, t.createdAt)]);
+
+export const messageAttachment = pgTable("message_attachment", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  messageId: uuid("message_id").notNull().references(() => message.id, { onDelete: "cascade" }),
+  fileName: text("file_name").notNull(),
+  contentType: text("content_type").notNull(),
+  size: integer("size").notNull(),
+  data: bytea("data").notNull(),
+}, (t) => [index("message_attachment_message_idx").on(t.messageId)]);

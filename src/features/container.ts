@@ -50,6 +50,8 @@ import { createWorkflowsRepository } from "./workflows/workflows.repository";
 import { createWorkflowsService, type Senders } from "./workflows/workflows.service";
 import { createAccessRepository } from "./access/access.repository";
 import { createInboxRepository } from "./inbox/inbox.repository";
+import { createMessagesRepository } from "./messages/messages.repository";
+import { createMessagesService } from "./messages/messages.service";
 import { createInboxService } from "./inbox/inbox.service";
 import { createAccessService } from "./access/access.service";
 import { createCaseHistoryRepository } from "./case-history/case-history.repository";
@@ -129,6 +131,12 @@ export function createContainer(db: Db, opts: {
   return {
     access,
     inbox,
+    messages: createMessagesService({
+      messagesRepo: createMessagesRepository(db),
+      activeStaff: async () => (await staffRepo.list()).filter((s) => s.active),
+      roleName: async (id) => (await accessRepo.findRole(id))?.name ?? null,
+      notify: (n) => inbox.notify(n),
+    }),
     staff: createStaffService({
       staffRepo,
       roles: {

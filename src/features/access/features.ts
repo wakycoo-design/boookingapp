@@ -65,6 +65,28 @@ export const FEATURES: Feature[] = [
   },
   { key: "otp", label: "OTP authentication", group: "Setup", actions: ["view", "edit"], defaults: {} },
   {
+    key: "messages",
+    label: "Messages",
+    group: "Team",
+    actions: ["view", "add"],
+    defaults: { staff: ["view", "add"], manager: ["view", "add"] },
+    hint: "View = chat in their conversations; Add = start one-to-one chats and groups.",
+  },
+  {
+    key: "messages.announcements",
+    label: "Message everyone or a whole role",
+    group: "Team",
+    actions: ["add"],
+    defaults: { manager: ["add"] },
+  },
+  {
+    key: "messages.moderate",
+    label: "Delete others' messages",
+    group: "Team",
+    actions: ["delete"],
+    defaults: {},
+  },
+  {
     key: "notifications",
     label: "Notifications (bell)",
     group: "Daily work",

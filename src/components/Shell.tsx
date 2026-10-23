@@ -11,6 +11,7 @@ import { SidebarFrame } from "./SidebarFrame";
 export async function Shell({ me, children }: { me: StaffDTO; children: React.ReactNode }) {
   // Each menu item shows only for those allowed to view it (Settings, Roles & permissions).
   const [perms, role, unread] = await Promise.all([currentPermissions(), app().access.roleOf(me), app().inbox.unread(me.id)]);
+  const unreadMessages = can(perms, "messages", "view") ? await app().messages.unreadTotal({ id: me.id, name: me.name, roleId: me.roleId, permissions: perms }) : 0;
   const sees = (feature: string) => can(perms, feature, "view");
   const manages = ["services", "staff", "packages", "clients", "reports", "workflows"].some(sees);
   const settings = FEATURES.some((f) => f.key.startsWith("settings.") && sees(f.key));
@@ -28,6 +29,12 @@ export async function Shell({ me, children }: { me: StaffDTO; children: React.Re
                 <NavLink href="/admin/notifications" icon="bell">
                   Notifications
                   {unread > 0 && <span className="ml-auto rounded-full bg-green-600 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-white">{unread > 99 ? "99+" : unread}</span>}
+                </NavLink>
+              )}
+              {sees("messages") && (
+                <NavLink href="/admin/messages" icon="chat">
+                  Messages
+                  {unreadMessages > 0 && <span className="ml-auto rounded-full bg-green-600 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-white">{unreadMessages > 99 ? "99+" : unreadMessages}</span>}
                 </NavLink>
               )}
               {sees("bookings") && <NavLink href="/admin/bookings" icon="list">Bookings</NavLink>}

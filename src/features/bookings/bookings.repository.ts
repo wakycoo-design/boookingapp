@@ -189,6 +189,11 @@ export function createBookingsRepository(db: Db) {
     return row ?? null;
   }
 
+  async function findByNumber(n: number): Promise<BookingDTO | null> {
+    const [row] = await base().where(eq(booking.number, n));
+    return row ?? null;
+  }
+
   /** Runs `fn` in a transaction and turns guard failures into a WriteResult instead of an exception. */
   async function guarded<T>(fn: (tx: Tx) => Promise<T>): Promise<WriteResult<T>> {
     try {
@@ -201,6 +206,7 @@ export function createBookingsRepository(db: Db) {
 
   return {
     findById,
+    findByNumber,
 
     async findByIdempotencyKey(key: string): Promise<BookingDTO | null> {
       const [row] = await base().where(eq(booking.idempotencyKey, key));
