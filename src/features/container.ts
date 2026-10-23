@@ -49,6 +49,8 @@ import { createSenders } from "./workflows/senders";
 import { createWorkflowsRepository } from "./workflows/workflows.repository";
 import { createWorkflowsService, type Senders } from "./workflows/workflows.service";
 import { createAccessRepository } from "./access/access.repository";
+import { createInboxRepository } from "./inbox/inbox.repository";
+import { createInboxService } from "./inbox/inbox.service";
 import { createAccessService } from "./access/access.service";
 import { createCaseHistoryRepository } from "./case-history/case-history.repository";
 import { createCaseHistoryService } from "./case-history/case-history.service";
@@ -101,9 +103,21 @@ export function createContainer(db: Db, opts: {
     appUrl,
     secret: process.env.CALENDAR_ENCRYPTION_KEY || manageSecret,
   });
+  const inbox = createInboxService({
+    inboxRepo: createInboxRepository(db),
+    activeStaff: async () => (await staffRepo.list()).filter((s) => s.active),
+    permissionsFor: (member) => access.permissionsFor(member),
+    enabledEvents: async () => (await settingsRepo.get()).inAppEvents,
+    timezone: async () => (await settingsRepo.get()).timezone,
+    getBooking: async (id) => {
+      const b = await bookingsRepo.findById(id);
+      if (!b) throw new Error(`Booking ${id} not found`);
+      return b;
+    },
+  });
   // Everything that reacts to a booking change. Each listener runs even if another fails.
   const onEvent = async (event: BookingEvent) => {
-    const results = await Promise.allSettled([workflows.onBookingEvent(event), calendar.onBookingEvent(event)]);
+    const results = await Promise.allSettled([workflows.onBookingEvent(event), calendar.onBookingEvent(event), inbox.onBookingEvent(event)]);
     for (const r of results) if (r.status === "rejected") console.error(`Listener for booking event ${event.type} failed`, r.reason);
     // Send what was just queued (the calendar event with its Meet link, the confirmation message) straight away instead of
     // waiting for the next scheduled run. The scheduler still covers reminders, timeouts and retries.
@@ -114,6 +128,7 @@ export function createContainer(db: Db, opts: {
   };
   return {
     access,
+    inbox,
     staff: createStaffService({
       staffRepo,
       roles: {

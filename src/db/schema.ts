@@ -81,6 +81,8 @@ export const business = pgTable("business", {
   weekStart: integer("week_start").notNull().default(1),
   timeFormat: text("time_format").notNull().default("12h"),
   businessHours: jsonb("business_hours").$type<{ weekday: number; startTime: string; endTime: string }[]>().notNull().default([]),
+  /** Which events put a notification in staff's in-app inbox (keys from features/inbox/events.ts). Null = the defaults. */
+  inAppEvents: jsonb("in_app_events").$type<string[]>(),
   updatedAt: updatedAt(),
 }, (t) => [check("business_single_row", sql`${t.id} = 1`)]);
 
@@ -763,3 +765,15 @@ export const otpRequest = pgTable("otp_request", {
   index("otp_request_phone_idx").on(t.phoneE164, t.createdAt),
   index("otp_request_created_idx").on(t.createdAt),
 ]);
+
+/** The in-app inbox (the bell): one row per notification per recipient. */
+export const inboxItem = pgTable("inbox_item", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  staffId: uuid("staff_id").notNull().references(() => staff.id, { onDelete: "cascade" }),
+  event: text("event").notNull(),
+  title: text("title").notNull(),
+  body: text("body"),
+  href: text("href"),
+  createdAt: createdAt(),
+  readAt: timestamp("read_at", { withTimezone: true }),
+}, (t) => [index("inbox_item_staff_idx").on(t.staffId, t.createdAt)]);

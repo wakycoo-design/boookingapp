@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { timezone } from "@/features/shared/validation";
+import { isInboxEvent } from "@/features/inbox/events";
 
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use times like 09:00");
 
@@ -34,5 +35,6 @@ export const settingsInput = z.object({
     .array(z.object({ weekday: z.number().int().min(0).max(6), startTime: hhmm, endTime: hhmm }))
     .max(28)
     .default([]),
+  inAppEvents: z.array(z.string().refine(isInboxEvent, "Unknown notification event")).nullable().default(null),
 });
 export type SettingsInput = z.input<typeof settingsInput>;

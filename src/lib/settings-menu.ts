@@ -22,7 +22,10 @@ export const SETTINGS_GROUPS: { title: string; links: { href: string; label: str
   },
   {
     title: "Communication",
-    links: [{ href: "/admin/settings/email", label: "Email & design", feature: "settings.email" }],
+    links: [
+      { href: "/admin/settings/email", label: "Email & design", feature: "settings.email" },
+      { href: "/admin/settings/notifications", label: "In-app notifications", feature: "settings.notifications" },
+    ],
   },
   {
     title: "Developer",

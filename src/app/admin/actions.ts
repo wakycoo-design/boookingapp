@@ -8,10 +8,16 @@ import { DESIGNATIONS } from "@/features/staff/staff.dto";
 import { act, optional, optionalNumber, str } from "@/lib/form-actions";
 import { parseQuestions } from "@/features/catalog/questions";
 import { parseDayRanges } from "@/lib/hours-form";
+import type { Notice } from "@/features/inbox/inbox.service";
 import { zonedToUtc } from "@/lib/time";
 import { can, hasRole, requirePermission } from "@/lib/session";
 
 /** Staff may edit their own hours and time off; managers and admins may edit anyone's. */
+/** Puts a notice in the in-app inbox. Never fails the action it follows. */
+function tell(n: Notice) {
+  return app().inbox.notify(n).catch((err) => console.error("In-app notification failed", n.event, err));
+}
+
 async function requireSelfOrManager(staffId: string) {
   // Their own hours need Availability · edit; someone else's also need Availability · view all.
   const me = await requirePermission("availability", "edit");
@@ -27,13 +33,14 @@ export async function createStaffAction(form: FormData) {
   await act("/admin/staff", "Staff member added", async () => {
     const role = await app().access.getRole(str(form, "roleId"));
     if (role.base === "admin" && !hasRole(me, "admin")) throw new DomainError("forbidden", "Only admins can add admins");
-    await app().staff.create({ staffId: me.id }, {
+    const created = await app().staff.create({ staffId: me.id }, {
       name: str(form, "name"),
       email: str(form, "email"),
       roleId: role.id,
       designation: designationOf(form),
       timezone: str(form, "timezone") || "Asia/Kolkata",
     });
+    await tell({ event: "staff.created", title: `New staff member: ${created.name}`, body: role.name, href: `/admin/staff/${created.id}`, ownerId: created.id, actorId: me.id });
   });
 }
 
@@ -48,7 +55,7 @@ export async function updateStaffAction(staffId: string, form: FormData) {
     if (staffId === me.id && (role.id !== (target.roleId ?? role.id) || role.base !== me.role || form.get("active") !== "on")) {
       throw new DomainError("invalid", "You can't change your own role or deactivate yourself");
     }
-    await app().staff.update({ staffId: me.id }, staffId, {
+    const updated = await app().staff.update({ staffId: me.id }, staffId, {
       name: str(form, "name"),
       email: str(form, "email"),
       roleId: role.id,
@@ -69,6 +76,14 @@ export async function updateStaffAction(staffId: string, form: FormData) {
     );
     if (Object.values(prices).some((p) => p !== null && Number.isNaN(p))) throw new DomainError("invalid", "Enter prices as plain numbers, e.g. 2500");
     await app().staff.setServicePrices({ staffId: me.id }, staffId, prices);
+    const deactivated = target.active && !updated.active;
+    await tell({
+      event: deactivated ? "staff.deactivated" : "staff.edited",
+      title: deactivated ? `${updated.name} was deactivated` : `${updated.name}'s profile was updated`,
+      href: `/admin/staff/${staffId}`,
+      ownerId: staffId,
+      actorId: me.id,
+    });
   });
 }
 
@@ -89,6 +104,14 @@ export async function addTimeOffAction(staffId: string, form: FormData) {
       startsAt: zonedToUtc(str(form, "startsAt"), target.timezone),
       endsAt: zonedToUtc(str(form, "endsAt"), target.timezone),
       reason: optional(form, "reason"),
+    });
+    await tell({
+      event: "staff.on_leave",
+      title: `${target.name} is on leave`,
+      body: `${str(form, "startsAt").replace("T", " ")} to ${str(form, "endsAt").replace("T", " ")}${optional(form, "reason") ? ` · ${optional(form, "reason")}` : ""}`,
+      href: `/admin/staff/${staffId}`,
+      ownerId: staffId,
+      actorId: me.id,
     });
   });
 }
@@ -199,6 +222,7 @@ const SETTINGS_SECTIONS = {
   payments: (form: FormData) => ({ onlinePayment: form.get("onlinePayment") === "on", resumeUrl: str(form, "resumeUrl") }),
   "online-sessions": (form: FormData) => ({ meetEnabled: form.get("meetEnabled") === "on" }),
   email: (form: FormData) => ({ emailBranded: form.get("emailBranded") === "on" }),
+  notifications: (form: FormData) => ({ inAppEvents: [...form.keys()].filter((k) => k.startsWith("ev:")).map((k) => k.slice(3)) }),
 } as const;
 export type SettingsSection = keyof typeof SETTINGS_SECTIONS;
 const SETTINGS_FEATURE: Record<SettingsSection, string> = {
@@ -208,6 +232,7 @@ const SETTINGS_FEATURE: Record<SettingsSection, string> = {
   payments: "settings.payments",
   "online-sessions": "settings.onlineSessions",
   email: "settings.email",
+  notifications: "settings.notifications",
 };
 
 export async function saveSettingsAction(section: SettingsSection, form: FormData) {
@@ -238,6 +263,7 @@ export async function updateClientProfileAction(clientId: string, form: FormData
       notes: optional(form, "notes"),
       ...profile,
     });
+    await tell({ event: "client.edited", title: `Client updated: ${str(form, "name")}`, href: `/admin/clients/${clientId}`, actorId: me.id });
     return `/admin/clients/${clientId}`;
   });
 }
@@ -253,6 +279,7 @@ export async function createClientAction(form: FormData) {
       notes: optional(form, "notes"),
     });
     if (str(form, "staffId")) await app().clients.assignTherapist({ staffId: me.id }, created.id, { staffId: str(form, "staffId") });
+    await tell({ event: "client.created", title: `New client: ${created.name}`, href: `/admin/clients/${created.id}`, ownerId: str(form, "staffId") || null, actorId: me.id });
     return `/admin/clients/${created.id}`;
   });
 }

@@ -10,7 +10,7 @@ import { SidebarFrame } from "./SidebarFrame";
 /** App frame: a black sidebar on the left (cal.com style) and the page on the right. */
 export async function Shell({ me, children }: { me: StaffDTO; children: React.ReactNode }) {
   // Each menu item shows only for those allowed to view it (Settings, Roles & permissions).
-  const [perms, role] = await Promise.all([currentPermissions(), app().access.roleOf(me)]);
+  const [perms, role, unread] = await Promise.all([currentPermissions(), app().access.roleOf(me), app().inbox.unread(me.id)]);
   const sees = (feature: string) => can(perms, feature, "view");
   const manages = ["services", "staff", "packages", "clients", "reports", "workflows"].some(sees);
   const settings = FEATURES.some((f) => f.key.startsWith("settings.") && sees(f.key));
@@ -24,6 +24,12 @@ export async function Shell({ me, children }: { me: StaffDTO; children: React.Re
             </div>
             <nav className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible" aria-label="Main">
               <NavLink href="/" icon="home" exact>Today</NavLink>
+              {sees("notifications") && (
+                <NavLink href="/admin/notifications" icon="bell">
+                  Notifications
+                  {unread > 0 && <span className="ml-auto rounded-full bg-green-600 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-white">{unread > 99 ? "99+" : unread}</span>}
+                </NavLink>
+              )}
               {sees("bookings") && <NavLink href="/admin/bookings" icon="list">Bookings</NavLink>}
               {sees("calendar") && <NavLink href="/admin/calendar" icon="calendar">Calendar</NavLink>}
               {sees("availability") && <NavLink href={`/admin/staff/${me.id}`} icon="clock">Availability</NavLink>}

@@ -27,6 +27,7 @@ const columns = {
   weekStart: business.weekStart,
   timeFormat: sql<"12h" | "24h">`${business.timeFormat}`,
   businessHours: business.businessHours,
+  inAppEvents: business.inAppEvents,
 };
 
 export function createSettingsRepository(db: Db) {

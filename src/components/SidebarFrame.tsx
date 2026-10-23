@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 
 const KEY = "waky.sidebar";
 const DEFAULT_W = 240;
@@ -11,13 +12,27 @@ const clamp = (w: number) => Math.min(MAX_W, Math.max(MIN_W, w));
 
 /**
  * Desktop sidebar the user can drag to resize or hide entirely (Ctrl/Cmd+B), so pages can use the full window.
- * The sidebar and page arrive as props so they stay server components.
+ * The sidebar and page arrive as props so they stay server components. Settings has its own menu, so there the sidebar
+ * starts hidden and the page uses the full window; » shows it for that visit, and leaving Settings brings back the usual one.
  */
 export function SidebarFrame({ sidebar, children }: { sidebar: React.ReactNode; children: React.ReactNode }) {
   const [width, setWidth] = useState(DEFAULT_W);
   const [collapsed, setCollapsed] = useState(false);
   const [dragging, setDragging] = useState(false);
   const loaded = useRef(false);
+  const inSettings = usePathname().startsWith("/admin/settings");
+  const [peek, setPeek] = useState(false);
+  // Entering or leaving Settings starts it hidden again (adjusting state during render, not in an effect).
+  const [wasInSettings, setWasInSettings] = useState(inSettings);
+  if (wasInSettings !== inSettings) {
+    setWasInSettings(inSettings);
+    setPeek(false);
+  }
+  const hidden = inSettings ? !peek : collapsed;
+  const setHidden = useCallback((h: boolean | ((h: boolean) => boolean)) => {
+    if (inSettings) setPeek((p) => !(typeof h === "function" ? h(!p) : h));
+    else setCollapsed(h);
+  }, [inSettings]);
 
   // Read after mount: localStorage does not exist during server render.
   useEffect(() => {
@@ -46,12 +61,12 @@ export function SidebarFrame({ sidebar, children }: { sidebar: React.ReactNode; 
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
         e.preventDefault();
-        setCollapsed((c) => !c);
+        setHidden((c) => !c);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [setHidden]);
 
   const startDrag = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -69,7 +84,7 @@ export function SidebarFrame({ sidebar, children }: { sidebar: React.ReactNode; 
   // --sidebar-w is the space the page reserves (0 when hidden); --sidebar-open-w is the sidebar's own width, which must stay
   // non-zero so sliding it off-screen by 100% actually clears it.
   const style = {
-    "--sidebar-w": collapsed ? "0px" : `${width}px`,
+    "--sidebar-w": hidden ? "0px" : `${width}px`,
     "--sidebar-open-w": `${width}px`,
   } as React.CSSProperties;
 
@@ -77,13 +92,13 @@ export function SidebarFrame({ sidebar, children }: { sidebar: React.ReactNode; 
     <div
       className={`group/shell min-h-screen md:pl-[var(--sidebar-w)] ${dragging ? "select-none" : "md:transition-[padding]"}`}
       style={style}
-      data-collapsed={collapsed}
+      data-collapsed={hidden}
     >
-      <aside className={`sidebar ${collapsed ? "md:-translate-x-full md:invisible" : ""} ${dragging ? "" : "md:transition-transform"}`}>
+      <aside className={`sidebar ${hidden ? "md:-translate-x-full md:invisible" : ""} ${dragging ? "" : "md:transition-transform"}`}>
         {sidebar}
         <button
           type="button"
-          onClick={() => setCollapsed(true)}
+          onClick={() => setHidden(true)}
           className="absolute right-2 top-5 hidden rounded-md p-1.5 text-zinc-500 hover:bg-zinc-200 hover:text-black md:block"
           aria-label="Hide sidebar"
           title="Hide sidebar (Ctrl/Cmd+B)"
@@ -103,10 +118,10 @@ export function SidebarFrame({ sidebar, children }: { sidebar: React.ReactNode; 
           className={`absolute inset-y-0 -right-1 hidden w-2 cursor-col-resize md:block hover:bg-zinc-300 ${dragging ? "bg-zinc-400" : ""}`}
         />
       </aside>
-      {collapsed && (
+      {hidden && (
         <button
           type="button"
-          onClick={() => setCollapsed(false)}
+          onClick={() => setHidden(false)}
           className="fixed left-3 top-3 z-20 hidden rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-sm text-zinc-600 shadow-sm hover:bg-zinc-100 hover:text-black md:block"
           aria-label="Show sidebar"
           title="Show sidebar (Ctrl/Cmd+B)"

@@ -64,6 +64,14 @@ export const FEATURES: Feature[] = [
     hint: "Own = their own performance page only.",
   },
   { key: "otp", label: "OTP authentication", group: "Setup", actions: ["view", "edit"], defaults: {} },
+  {
+    key: "notifications",
+    label: "Notifications (bell)",
+    group: "Daily work",
+    actions: ["view", "viewAll"],
+    defaults: { staff: ["view"], manager: ["view", "viewAll"] },
+    hint: "Own = about their own appointments and leave; Everyone's = every switched-on event.",
+  },
   SETTINGS("organization", "Basic information"),
   SETTINGS("holidays", "Holidays"),
   SETTINGS("bookingRules", "Booking rules & IDs"),
@@ -71,6 +79,7 @@ export const FEATURES: Feature[] = [
   SETTINGS("payments", "Payments"),
   SETTINGS("onlineSessions", "Online sessions"),
   SETTINGS("email", "Email & design"),
+  SETTINGS("notifications", "In-app notifications"),
   SETTINGS("apiKeys", "API keys"),
   SETTINGS("roles", "Roles & permissions"),
 ];

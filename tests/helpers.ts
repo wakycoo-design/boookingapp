@@ -16,6 +16,7 @@ export async function reset() {
   // the tests of the design turn it on themselves. Start times go back to the default for tests that change them.
   // Built-in roles stay (the migration made them); custom roles and changed ticks go.
   await db.execute(sql`delete from role_permission`);
+  await db.execute(sql`delete from inbox_item`);
   await db.execute(sql`delete from role where not system`);
-  await db.execute(sql`update business set email_branded = false, slot_interval_min = 30`);
+  await db.execute(sql`update business set email_branded = false, slot_interval_min = 30, in_app_events = null`);
 }

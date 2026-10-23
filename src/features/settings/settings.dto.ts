@@ -30,4 +30,6 @@ export type BusinessSettingsDTO = {
   timeFormat: "12h" | "24h";
   /** The firm's general opening times (all shifts). Shown only; each therapist's own hours decide bookings. */
   businessHours: { weekday: number; startTime: string; endTime: string }[];
+  /** Events switched on for the in-app inbox; null = the defaults (features/inbox/events.ts). */
+  inAppEvents: string[] | null;
 };
