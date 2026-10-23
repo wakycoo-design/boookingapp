@@ -19,7 +19,6 @@ export default async function HolidaysPage({ searchParams }: { searchParams: Pro
       <PageHeader
         title="Holidays"
         subtitle="Days the whole firm is closed. No one can be booked on these dates."
-        action={<Link className="btn-ghost" href="/admin/settings">Back to settings</Link>}
       />
       <Notice error={error} ok={ok} />
       <div className="grid max-w-3xl gap-6">

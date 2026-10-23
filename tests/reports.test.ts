@@ -69,7 +69,7 @@ describe("reports", () => {
     const lines = csv.replace("﻿", "").trim().split("\r\n");
     expect(filename).toBe("bookings-2026-10-19-to-2026-10-19.csv");
     expect(lines[0]).toBe("Booking ID,Starts,Ends,Service,Staff,Client,Phone,Email,Meeting status,Payment,Amount due (INR),Amount paid (INR),Razorpay payment ID,Paid at,No-show by,Booked,Notes,Answers");
-    expect(lines[1]).toContain("BK-00001,2026-10-19 10:00");
+    expect(lines[1]).toContain("BK-1,2026-10-19 10:00");
     expect(lines[1]).toContain("scheduled,not_required");
   });
 

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { Db } from "@/db";
 import { business } from "@/db/schema";
 import { writeAudit } from "@/features/audit/audit.repository";
@@ -21,6 +21,12 @@ const columns = {
   onlinePayment: business.onlinePayment,
   meetEnabled: business.meetEnabled,
   emailBranded: business.emailBranded,
+  email: business.email,
+  phone: business.phone,
+  address: business.address,
+  weekStart: business.weekStart,
+  timeFormat: sql<"12h" | "24h">`${business.timeFormat}`,
+  businessHours: business.businessHours,
 };
 
 export function createSettingsRepository(db: Db) {

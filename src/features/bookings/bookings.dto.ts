@@ -90,7 +90,8 @@ export function paymentAction(b: Pick<BookingDTO, "status" | "paymentStatus" | "
 }
 
 /** "BK-" + 5-digit number, e.g. BK-00012. */
-export const bookingReference = (prefix: string, n: number) => `${prefix}${String(n).padStart(5, "0")}`;
+/** Prefix and number joined as they are, e.g. "WZ780" + 1007 = "WZ7801007". */
+export const bookingReference = (prefix: string, n: number) => `${prefix}${n}`;
 
 export const toPublicBooking = (b: BookingDTO, prefix: string, now: Date = new Date()): PublicBookingDTO => ({
   id: b.id,

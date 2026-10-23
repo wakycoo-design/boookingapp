@@ -18,7 +18,6 @@ export default async function ApiSettingsPage({ searchParams }: { searchParams: 
       <PageHeader
         title="API keys"
         subtitle="Let your website show times and take bookings. Keep the key on your website's server, never in browser code."
-        action={<Link className="btn-ghost" href="/admin/settings">Back to settings</Link>}
       />
       <Notice error={error} ok={ok} />
       <div className="grid max-w-3xl gap-6">

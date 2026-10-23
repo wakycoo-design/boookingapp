@@ -443,9 +443,23 @@ export function createBookingsService(deps: {
       return get(id);
     },
 
-    /** What the next booking's number will roughly be; gaps from failed attempts can make it a little higher. */
-    async nextNumber() {
-      return (await bookingsRepo.latestNumber()) + 1;
+    /** What the next booking's number will be; a booking attempt that fails can still use one up. */
+    nextNumber: () => bookingsRepo.nextNumber(),
+
+    /**
+     * Sets the number the next booking gets (e.g. 1007); later ones count up from it. Existing bookings keep theirs.
+     * It can only move forward, past every number already used, so two bookings never share one.
+     */
+    async setNextNumber(actor: Actor, next: number) {
+      if (!Number.isInteger(next) || next < 1 || next > 2_000_000_000) {
+        throw new DomainError("invalid", "The next booking number must be a whole number from 1");
+      }
+      const [current, latest] = await Promise.all([bookingsRepo.nextNumber(), bookingsRepo.latestNumber()]);
+      if (next === current) return;
+      if (next <= latest || next < current) {
+        throw new DomainError("invalid", `The next booking number can only go up: it is ${current} now, so use ${Math.max(current, latest + 1)} or more`);
+      }
+      await bookingsRepo.restartNumbering(next, { actor, action: "update", entity: "booking_number", entityId: "next", details: { from: current, to: next } });
     },
 
     /** Staff record whether the client has paid. Cancelled bookings can still be marked, for refunds. */

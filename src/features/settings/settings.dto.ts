@@ -21,4 +21,13 @@ export type BusinessSettingsDTO = {
   meetEnabled: boolean;
   /** Emails use the branded design. */
   emailBranded: boolean;
+  /** Organization details. */
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  /** 0 = Sunday, 1 = Monday. */
+  weekStart: number;
+  timeFormat: "12h" | "24h";
+  /** The firm's general opening times (all shifts). Shown only; each therapist's own hours decide bookings. */
+  businessHours: { weekday: number; startTime: string; endTime: string }[];
 };

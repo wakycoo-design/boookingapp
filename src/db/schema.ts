@@ -73,6 +73,14 @@ export const business = pgTable("business", {
   meetEnabled: boolean("meet_enabled").notNull().default(false),
   /** Emails use the branded design (logo, green and gold) instead of plain text. */
   emailBranded: boolean("email_branded").notNull().default(true),
+  /** Organization details, shown to staff and clients. Business hours are the firm's general opening times only. */
+  email: text("email"),
+  phone: text("phone"),
+  address: text("address"),
+  /** 0 = Sunday, 1 = Monday. */
+  weekStart: integer("week_start").notNull().default(1),
+  timeFormat: text("time_format").notNull().default("12h"),
+  businessHours: jsonb("business_hours").$type<{ weekday: number; startTime: string; endTime: string }[]>().notNull().default([]),
   updatedAt: updatedAt(),
 }, (t) => [check("business_single_row", sql`${t.id} = 1`)]);
 

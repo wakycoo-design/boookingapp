@@ -526,6 +526,22 @@ export function createBookingsRepository(db: Db) {
     },
 
     /** Highest booking number so far, to show the admin what the next ID will look like. */
+    /** The number the next booking will get, read from the booking number counter itself. */
+    async nextNumber(): Promise<number> {
+      const res = await db.execute(sql`select last_value::int as "last", is_called as "called" from booking_number_seq`);
+      const row = res.rows[0] as { last: number; called: boolean } | undefined;
+      return row ? (row.called ? row.last + 1 : row.last) : 1;
+    },
+
+    /** Makes the next booking take this number; later ones count up from it. Only ever forward, so no number repeats. */
+    async restartNumbering(next: number, audit: AuditEntry): Promise<void> {
+      if (!Number.isSafeInteger(next) || next < 1) throw new Error("Booking number must be a positive whole number");
+      await db.transaction(async (tx) => {
+        await tx.execute(sql.raw(`alter table booking alter column number restart with ${next}`));
+        await writeAudit(tx, audit);
+      });
+    },
+
     async latestNumber(): Promise<number> {
       const [row] = await db.select({ n: sql<number>`coalesce(max(${booking.number}), 0)::int` }).from(booking);
       return row.n;

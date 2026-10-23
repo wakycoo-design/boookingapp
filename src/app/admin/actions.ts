@@ -161,36 +161,55 @@ export async function removeDateOverrideAction(staffId: string, date: string) {
 export async function sendTestEmailAction(form: FormData) {
   await requireStaff("admin");
   const to = str(form, "to");
-  await act("/admin/settings", `Test email sent to ${to}. Check that inbox (and spam).`, () => app().mail.sendTest(to));
+  await act("/admin/settings/email", `Test email sent to ${to}. Check that inbox (and spam).`, () => app().mail.sendTest(to));
 }
 
 export async function sendSampleEmailAction(form: FormData) {
   await requireStaff("admin");
   const to = str(form, "to");
-  await act("/admin/settings", `Sample email sent to ${to}. Open it to check the design.`, () => app().mail.sendSample(to));
+  await act("/admin/settings/email", `Sample email sent to ${to}. Open it to check the design.`, () => app().mail.sendSample(to));
 }
 
-export async function updateSettingsAction(form: FormData) {
+/** What each settings page sends. A page saves only its own fields; everything else stays as it is. */
+const SETTINGS_SECTIONS = {
+  organization: (form: FormData) => ({
+    name: str(form, "name"),
+    email: str(form, "email"),
+    phone: str(form, "phone"),
+    address: str(form, "address"),
+    timezone: str(form, "timezone"),
+    currency: str(form, "currency"),
+    weekStart: str(form, "weekStart"),
+    timeFormat: str(form, "timeFormat") as "12h" | "24h",
+    logoUrl: str(form, "logoUrl"),
+    businessHours: [0, 1, 2, 3, 4, 5, 6].flatMap((d) => parseDayRanges(d, str(form, `day${d}`))),
+  }),
+  "booking-rules": (form: FormData) => ({
+    bookingPrefix: str(form, "bookingPrefix"),
+    slotIntervalMin: str(form, "slotIntervalMin"),
+    minNoticeMin: str(form, "minNoticeMin"),
+    maxNoticeDays: str(form, "maxNoticeDays"),
+    clientCutoffMin: Number(str(form, "clientCutoffHours")) * 60,
+  }),
+  "booking-page": (form: FormData) => ({
+    brandColor: str(form, "brandColor") || "#000000",
+    welcomeText: str(form, "welcomeText"),
+  }),
+  payments: (form: FormData) => ({ onlinePayment: form.get("onlinePayment") === "on", resumeUrl: str(form, "resumeUrl") }),
+  "online-sessions": (form: FormData) => ({ meetEnabled: form.get("meetEnabled") === "on" }),
+  email: (form: FormData) => ({ emailBranded: form.get("emailBranded") === "on" }),
+} as const;
+export type SettingsSection = keyof typeof SETTINGS_SECTIONS;
+
+export async function saveSettingsAction(section: SettingsSection, form: FormData) {
   const me = await requireStaff("admin");
-  await act("/admin/settings", "Settings saved", () =>
-    app().settings.update({ staffId: me.id }, {
-      name: str(form, "name"),
-      timezone: str(form, "timezone"),
-      currency: str(form, "currency"),
-      bookingPrefix: str(form, "bookingPrefix"),
-      slotIntervalMin: str(form, "slotIntervalMin"),
-      minNoticeMin: str(form, "minNoticeMin"),
-      maxNoticeDays: str(form, "maxNoticeDays"),
-      clientCutoffMin: Number(str(form, "clientCutoffHours")) * 60,
-      logoUrl: str(form, "logoUrl"),
-      brandColor: str(form, "brandColor") || "#000000",
-      welcomeText: str(form, "welcomeText"),
-      resumeUrl: str(form, "resumeUrl"),
-      onlinePayment: form.get("onlinePayment") === "on",
-      meetEnabled: form.get("meetEnabled") === "on",
-      emailBranded: form.get("emailBranded") === "on",
-    }),
-  );
+  await act(`/admin/settings/${section}`, "Settings saved", async () => {
+    await app().settings.updatePart({ staffId: me.id }, SETTINGS_SECTIONS[section](form));
+    // The booking ID's number lives in its own counter, not in the settings row.
+    if (section === "booking-rules" && str(form, "nextNumber")) {
+      await app().bookings.setNextNumber({ staffId: me.id }, Number(str(form, "nextNumber")));
+    }
+  });
 }
 
 const PROFILE_FIELDS = [

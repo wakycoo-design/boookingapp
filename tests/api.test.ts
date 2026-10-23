@@ -86,7 +86,7 @@ describe("/api/v1 booking flow", () => {
     const created = await create(post("/api/v1/bookings", key, body, { "idempotency-key": "web-123456" }));
     expect(created.status).toBe(201);
     const { booking, manageToken } = (await created.json()).data;
-    expect(booking).toMatchObject({ reference: "BK-00001", staffName: "Asha", status: "upcoming" });
+    expect(booking).toMatchObject({ reference: "BK-1", staffName: "Asha", status: "upcoming" });
     expect(booking).not.toHaveProperty("clientPhone");
 
     const replay = await create(post("/api/v1/bookings", key, body, { "idempotency-key": "web-123456" }));

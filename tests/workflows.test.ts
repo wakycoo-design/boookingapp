@@ -84,7 +84,7 @@ describe("sending", () => {
     expect(await c.workflows.processDue({ now })).toBe(1);
     expect(sent).toHaveLength(1);
     expect(sent[0]).toMatchObject({ channel: "email", to: "ravi@example.com", subject: "Hi Ravi Kumar" });
-    expect((sent[0] as { body: string }).body).toBe("Consult with Asha on Monday, 19 October 2026 at 10:00 am (BK-00001)");
+    expect((sent[0] as { body: string }).body).toBe("Consult with Asha on Monday, 19 October 2026 at 10:00 am (BK-1)");
   });
 
   it("sends once even if the worker runs again", async () => {
@@ -206,7 +206,7 @@ describe("sending", () => {
     expect(sent[0]).toMatchObject({
       channel: "webhook",
       url: "https://example.com/hook",
-      payload: { event: "booked", booking: { reference: "BK-00001", service: "Consult", staff: "Asha" }, client: { name: "Ravi Kumar", email: "ravi@example.com" } },
+      payload: { event: "booked", booking: { reference: "BK-1", service: "Consult", staff: "Asha" }, client: { name: "Ravi Kumar", email: "ravi@example.com" } },
     });
   });
 });
