@@ -29,6 +29,9 @@ export const SETTINGS_GROUPS: { title: string; links: { href: string; label: str
   },
   {
     title: "Developer",
-    links: [{ href: "/admin/settings/api", label: "API keys", feature: "settings.apiKeys" }],
+    links: [
+      { href: "/admin/settings/api", label: "API keys", feature: "settings.apiKeys" },
+      { href: "/admin/settings/webhooks", label: "Webhooks", feature: "settings.webhooks" },
+    ],
   },
 ];

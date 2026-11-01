@@ -103,6 +103,7 @@ export const FEATURES: Feature[] = [
   SETTINGS("email", "Email & design"),
   SETTINGS("notifications", "In-app notifications"),
   SETTINGS("apiKeys", "API keys"),
+  SETTINGS("webhooks", "Webhooks"),
   SETTINGS("roles", "Roles & permissions"),
 ];
 

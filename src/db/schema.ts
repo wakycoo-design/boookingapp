@@ -829,3 +829,20 @@ export const messageAttachment = pgTable("message_attachment", {
   size: integer("size").notNull(),
   data: bytea("data").notNull(),
 }, (t) => [index("message_attachment_message_idx").on(t.messageId)]);
+
+/**
+ * What Meta's WhatsApp webhook told us, so Settings > Webhooks can show the hookup works. Only the kind of event and
+ * Meta's ids are kept: phone numbers and message text are client personal data and stay out of this table.
+ */
+export const webhookEvent = pgTable("webhook_event", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  source: text("source").notNull(),
+  kind: text("kind").notNull(),
+  /** A short, non-personal description: the message type ("text"), the delivery status ("read"), the template's new state. */
+  detail: text("detail").notNull(),
+  providerMessageId: text("provider_message_id"),
+  receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  check("webhook_event_kind", sql`${t.kind} in ('message', 'status', 'template', 'other')`),
+  index("webhook_event_received_idx").on(t.receivedAt),
+]);

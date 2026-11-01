@@ -56,6 +56,8 @@ import { createInboxService } from "./inbox/inbox.service";
 import { createAccessService } from "./access/access.service";
 import { createCaseHistoryRepository } from "./case-history/case-history.repository";
 import { createCaseHistoryService } from "./case-history/case-history.service";
+import { createWebhooksRepository } from "./webhooks/webhooks.repository";
+import { createWebhooksService } from "./webhooks/webhooks.service";
 
 /**
  * Wires repositories into services. This is the only place that picks the storage
@@ -203,6 +205,7 @@ export function createContainer(db: Db, opts: {
     apiKeys: createApiKeysService({ apiKeysRepo: createApiKeysRepository(db) }),
     otp: createOtpService({ otpRepo: createOtpRepository(db), send: opts.otpSender ?? createOtpSender(), secret: manageSecret }),
     health: createHealthRepository(db),
+    webhooks: createWebhooksService({ webhooksRepo: createWebhooksRepository(db) }),
   };
 }
 
