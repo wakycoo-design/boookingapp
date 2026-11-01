@@ -205,3 +205,23 @@ body {
   .card { break-inside: avoid; }
   body { background: #fff; }
 }
+
+/* Connection banner: the offline tab drops from the top edge, the slow-connection pill rises from the bottom. */
+@keyframes conn-drop {
+  from { transform: translateY(-100%); }
+}
+@keyframes conn-rise {
+  from { transform: translateY(1rem); opacity: 0; }
+}
+.conn-tab {
+  animation: conn-drop 200ms ease-out;
+}
+.conn-pill {
+  animation: conn-rise 200ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .conn-tab,
+  .conn-pill {
+    animation: none;
+  }
+}
