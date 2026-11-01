@@ -206,6 +206,15 @@ body {
   body { background: #fff; }
 }
 
+/* A risk drop-down set to "None" or "Low" gets the same faint green outline as those badges, as soon as it's picked. */
+.risk-select:has(option[value="none"]:checked),
+.risk-select:has(option[value="low"]:checked) {
+  @apply border-green-300;
+}
+.risk-select:has(option[value="moderate"]:checked) {
+  @apply border-yellow-400;
+}
+
 /* Connection banner: the offline tab drops from the top edge, the slow-connection pill rises from the bottom. */
 @keyframes conn-drop {
   from { transform: translateY(-100%); }

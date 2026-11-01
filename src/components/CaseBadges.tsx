@@ -1,12 +1,14 @@
 import type { CaseStatus } from "@/features/case-history/case-history.dto";
 import { LABEL, type Risk } from "@/features/case-history/choices";
 
-// Red only where it marks something a clinician must notice (high risk), per the app's colour rule.
+// Red only where it marks something a clinician must notice (high risk), per the app's colour rule. The reassuring
+// ratings (none, low) get only a faint green outline and moderate a faint yellow one, so each reads at a glance
+// without competing with the red.
 const riskTone: Record<Risk, string> = {
   high: "border-red-300 bg-red-50 font-medium text-red-700",
-  moderate: "border-zinc-400 text-black",
-  low: "border-zinc-200 text-zinc-600",
-  none: "border-zinc-200 text-zinc-500",
+  moderate: "border-yellow-400 text-yellow-800",
+  low: "border-green-300 text-green-700",
+  none: "border-green-300 text-green-700",
 };
 
 export function RiskBadge({ risk, prefix }: { risk: Risk | null; prefix?: string }) {

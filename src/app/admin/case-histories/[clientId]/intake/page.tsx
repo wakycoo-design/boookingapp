@@ -124,7 +124,7 @@ export default async function IntakePage({ params, searchParams }: { params: Pro
             {f.kind === "text" && <textarea className="input" id={f.name} name={f.name} rows={f.rows ?? 3} defaultValue={value(f.name)} />}
             {f.kind === "line" && <input className="input" id={f.name} name={f.name} defaultValue={value(f.name)} />}
             {f.kind === "choice" && (
-              <select className="input" id={f.name} name={f.name} defaultValue={value(f.name)}>
+              <select className={f.values === RISK ? "input risk-select" : "input"} id={f.name} name={f.name} defaultValue={value(f.name)}>
                 <option value="">Not recorded</option>
                 {f.values.map((x) => <option key={x} value={x}>{LABEL[x]}</option>)}
               </select>
