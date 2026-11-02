@@ -232,6 +232,13 @@
       "when": 1793561614133,
       "tag": "0032_webhook_events",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793628699743,
+      "tag": "0033_whatsapp_inbox",
+      "breakpoints": true
     }
   ]
 }

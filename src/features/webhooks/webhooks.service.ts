@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { DomainError, UpstreamError } from "@/features/shared/errors";
 import type { WhatsAppWebhookStatus } from "./webhooks.dto";
 import type { createWebhooksRepository } from "./webhooks.repository";
-import { parseWhatsAppPayload, validSignature } from "./whatsapp";
+import { parseWhatsAppChats, parseWhatsAppPayload, validSignature, type ChatStatus, type IncomingChat } from "./whatsapp";
 
 type Env = Record<string, string | undefined>;
 /** A month of events is plenty to see the hookup works and to look into a missed message. */
@@ -10,7 +10,16 @@ const KEEP_DAYS = 30;
 
 const same = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
-export function createWebhooksService({ webhooksRepo, env = process.env }: { webhooksRepo: ReturnType<typeof createWebhooksRepository>; env?: Env }) {
+export function createWebhooksService({
+  webhooksRepo,
+  onChats,
+  env = process.env,
+}: {
+  webhooksRepo: ReturnType<typeof createWebhooksRepository>;
+  /** The WhatsApp inbox: gets the messages and statuses with their text, which the event log never keeps. */
+  onChats?: (chats: { messages: IncomingChat[]; statuses: ChatStatus[] }) => Promise<void>;
+  env?: Env;
+}) {
   return {
     status(): WhatsAppWebhookStatus {
       const token = env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || null;
@@ -43,6 +52,7 @@ export function createWebhooksService({ webhooksRepo, env = process.env }: { web
       }
       const events = parseWhatsAppPayload(body);
       await webhooksRepo.record("whatsapp", events, new Date(now.getTime() - KEEP_DAYS * 86_400_000));
+      await onChats?.(parseWhatsAppChats(body));
       return events.length;
     },
 

@@ -58,6 +58,9 @@ import { createCaseHistoryRepository } from "./case-history/case-history.reposit
 import { createCaseHistoryService } from "./case-history/case-history.service";
 import { createWebhooksRepository } from "./webhooks/webhooks.repository";
 import { createWebhooksService } from "./webhooks/webhooks.service";
+import { createWhatsappInboxRepository } from "./whatsapp-inbox/whatsapp-inbox.repository";
+import { createWaTextSender, type WaTextSender } from "./whatsapp-inbox/whatsapp-inbox.sender";
+import { createWhatsappInboxService } from "./whatsapp-inbox/whatsapp-inbox.service";
 
 /**
  * Wires repositories into services. This is the only place that picks the storage
@@ -66,6 +69,8 @@ import { createWebhooksService } from "./webhooks/webhooks.service";
 export function createContainer(db: Db, opts: {
     senders?: Senders;
     otpSender?: OtpSender;
+    /** Sends staff replies in the WhatsApp inbox; tests pass a fake. */
+    waTextSender?: WaTextSender;
     manageSecret?: string;
     appUrl?: string;
     calendarProvider?: CalendarProvider;
@@ -119,6 +124,7 @@ export function createContainer(db: Db, opts: {
       return b;
     },
   });
+  const whatsappInbox = createWhatsappInboxService({ inboxRepo: createWhatsappInboxRepository(db), sendText: opts.waTextSender ?? createWaTextSender() });
   // Everything that reacts to a booking change. Each listener runs even if another fails.
   const onEvent = async (event: BookingEvent) => {
     const results = await Promise.allSettled([workflows.onBookingEvent(event), calendar.onBookingEvent(event), inbox.onBookingEvent(event)]);
@@ -205,7 +211,8 @@ export function createContainer(db: Db, opts: {
     apiKeys: createApiKeysService({ apiKeysRepo: createApiKeysRepository(db) }),
     otp: createOtpService({ otpRepo: createOtpRepository(db), send: opts.otpSender ?? createOtpSender(), secret: manageSecret }),
     health: createHealthRepository(db),
-    webhooks: createWebhooksService({ webhooksRepo: createWebhooksRepository(db) }),
+    whatsappInbox,
+    webhooks: createWebhooksService({ webhooksRepo: createWebhooksRepository(db), onChats: (chats) => whatsappInbox.receive(chats) }),
   };
 }
 

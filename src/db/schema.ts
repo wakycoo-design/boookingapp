@@ -846,3 +846,28 @@ export const webhookEvent = pgTable("webhook_event", {
   check("webhook_event_kind", sql`${t.kind} in ('message', 'status', 'template', 'other')`),
   index("webhook_event_received_idx").on(t.receivedAt),
 ]);
+
+/**
+ * WhatsApp chats with clients. The text is the client's own personal data, so every message belongs to a client and is
+ * deleted with them (a number that isn't a client yet becomes one when it first writes).
+ */
+export const whatsappMessage = pgTable("whatsapp_message", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clientId: uuid("client_id").notNull().references(() => client.id, { onDelete: "cascade" }),
+  direction: text("direction").$type<"in" | "out">().notNull(),
+  /** "text", or what else the client sent ("image", "audio" …); only text is shown in full. */
+  kind: text("kind").notNull().default("text"),
+  body: text("body").notNull().default(""),
+  /** Meta's id; delivery statuses and repeated webhook deliveries are matched on it. */
+  waMessageId: text("wa_message_id").unique(),
+  status: text("status").notNull(),
+  error: text("error"),
+  sentBy: uuid("sent_by").references(() => staff.id, { onDelete: "set null" }),
+  createdAt: createdAt(),
+  /** An incoming message staff have seen. */
+  readAt: timestamp("read_at", { withTimezone: true }),
+}, (t) => [
+  check("whatsapp_message_direction", sql`${t.direction} in ('in', 'out')`),
+  check("whatsapp_message_status", sql`${t.status} in ('received', 'sent', 'delivered', 'read', 'failed')`),
+  index("whatsapp_message_client_idx").on(t.clientId, t.createdAt),
+]);

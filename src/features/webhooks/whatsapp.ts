@@ -54,3 +54,47 @@ export function parseWhatsAppPayload(body: unknown): WebhookEventInput[] {
   }
   return out;
 }
+
+export type IncomingChat = { waMessageId: string; from: string; profileName: string | null; kind: string; body: string; at: Date };
+export type ChatStatus = { waMessageId: string; status: string; error: string | null };
+
+type ChatPayload = {
+  entry?: {
+    changes?: {
+      field?: string;
+      value?: {
+        contacts?: { wa_id?: string; profile?: { name?: string } }[];
+        messages?: { id?: string; from?: string; timestamp?: string; type?: string; text?: { body?: string }; image?: { caption?: string }; video?: { caption?: string }; document?: { caption?: string; filename?: string }; button?: { text?: string }; interactive?: { button_reply?: { title?: string }; list_reply?: { title?: string } } }[];
+        statuses?: { id?: string; status?: string; errors?: { code?: number; title?: string }[] }[];
+      };
+    }[];
+  }[];
+};
+
+/**
+ * The same delivery, read for the WhatsApp inbox: who wrote what, and what happened to what we sent. Unlike
+ * parseWhatsAppPayload this keeps numbers and text, so its output goes straight to the inbox and nowhere else.
+ */
+export function parseWhatsAppChats(body: unknown): { messages: IncomingChat[]; statuses: ChatStatus[] } {
+  const messages: IncomingChat[] = [];
+  const statuses: ChatStatus[] = [];
+  for (const entry of (body as ChatPayload)?.entry ?? []) {
+    for (const change of entry.changes ?? []) {
+      if (change.field !== "messages") continue;
+      const v = change.value ?? {};
+      const names = new Map((v.contacts ?? []).map((c) => [c.wa_id, c.profile?.name ?? null]));
+      for (const m of v.messages ?? []) {
+        if (!m.id || !m.from) continue;
+        const text = m.text?.body ?? m.button?.text ?? m.interactive?.button_reply?.title ?? m.interactive?.list_reply?.title ?? m.image?.caption ?? m.video?.caption ?? m.document?.caption ?? m.document?.filename ?? "";
+        const seconds = Number(m.timestamp);
+        messages.push({ waMessageId: m.id, from: m.from, profileName: names.get(m.from) ?? null, kind: m.type ?? "unknown", body: text, at: Number.isFinite(seconds) && seconds > 0 ? new Date(seconds * 1000) : new Date() });
+      }
+      for (const s of v.statuses ?? []) {
+        if (!s.id || !s.status) continue;
+        const e = s.errors?.[0];
+        statuses.push({ waMessageId: s.id, status: s.status, error: e ? `${e.title ?? "Error"} (${e.code ?? "?"})` : null });
+      }
+    }
+  }
+  return { messages, statuses };
+}

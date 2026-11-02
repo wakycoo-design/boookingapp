@@ -73,6 +73,14 @@ export const FEATURES: Feature[] = [
     hint: "View = chat in their conversations; Add = start one-to-one chats and groups.",
   },
   {
+    key: "whatsapp",
+    label: "WhatsApp inbox",
+    group: "Team",
+    actions: ["view", "add"],
+    defaults: { manager: ["view", "add"] },
+    hint: "View = read clients' WhatsApp chats; Add = reply to them.",
+  },
+  {
     key: "messages.announcements",
     label: "Message everyone or a whole role",
     group: "Team",

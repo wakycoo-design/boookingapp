@@ -59,7 +59,8 @@ solution for each problem.
 - TypeScript strict. Never use `as any`; use `import type` for type-only imports.
 - Comments explain why, not what.
 - Validate all input with Zod at the boundary.
-- Client personal data lives only in the `client` table.
+- Client personal data lives only in the `client` table, plus the client's own WhatsApp chats in
+  `whatsapp_message`, which always belong to a client and are deleted with them.
 - No secrets in code, tests, logs or commits.
 
 ## Database changes
