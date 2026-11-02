@@ -17,6 +17,7 @@ export async function MessagesView({ selectedId }: { selectedId: string | null }
       canModerate={can(me.permissions, "messages.moderate", "delete")}
       canLinkClients={can(me.permissions, "clients", "view")}
       canLinkBookings={can(me.permissions, "bookings", "view")}
+      canWhatsApp={can(me.permissions, "whatsapp", "view")}
     />
   );
 }

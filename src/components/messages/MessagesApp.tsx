@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, Avatar, GroupBadge, relativeTime, startPolling } from "./chat-ui";
 import { Conversation } from "./Conversation";
+import { MessagesTabs } from "./MessagesTabs";
 
 type Summary = { id: string; kind: "direct" | "group" | "everyone" | "role"; title: string; otherId: string | null; lastMessageAt: string; preview: string | null; unread: number };
 type People = { staff: { id: string; name: string }[]; roles: { id: string; name: string }[] };
@@ -18,6 +19,7 @@ export type MessagesAppProps = {
   canModerate: boolean;
   canLinkClients: boolean;
   canLinkBookings: boolean;
+  canWhatsApp: boolean;
 };
 
 /** Team messages: the conversation list on the left, the open conversation on the right (one at a time on phones). */
@@ -44,7 +46,7 @@ export function MessagesApp(p: MessagesAppProps) {
     <div className="-mx-4 -my-6 grid h-[calc(100dvh-1px)] grid-cols-1 overflow-hidden border-zinc-200 bg-white md:-mx-10 md:-my-10 md:grid-cols-[20rem_minmax(0,1fr)]">
       <aside className={`flex min-h-0 flex-col border-r border-zinc-200 ${p.selectedId ? "hidden md:flex" : "flex"}`}>
         <div className="flex items-center justify-between gap-2 px-4 pb-2 pt-4">
-          <h1 className="text-lg font-semibold">Messages</h1>
+          {p.canWhatsApp ? <MessagesTabs active="team" showTeam showWhatsApp /> : <h1 className="text-lg font-semibold">Messages</h1>}
           {(p.canStart || p.canAnnounce) && (
             <button type="button" onClick={() => setComposing((v) => !v)} className="rounded-full bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-black" aria-expanded={composing}>
               {composing ? "Close" : "+ New"}

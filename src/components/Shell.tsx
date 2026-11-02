@@ -13,6 +13,8 @@ export async function Shell({ me, children }: { me: StaffDTO; children: React.Re
   const [perms, role, unread] = await Promise.all([currentPermissions(), app().access.roleOf(me), app().inbox.unread(me.id)]);
   const unreadMessages = can(perms, "messages", "view") ? await app().messages.unreadTotal({ id: me.id, name: me.name, roleId: me.roleId, permissions: perms }) : 0;
   const sees = (feature: string) => can(perms, feature, "view");
+  const unreadWhatsApp = sees("whatsapp") ? await app().whatsappInbox.unreadTotal() : 0;
+  const messagesUnread = unreadMessages + unreadWhatsApp;
   const manages = ["services", "staff", "packages", "clients", "reports", "workflows"].some(sees);
   const settings = FEATURES.some((f) => f.key.startsWith("settings.") && sees(f.key));
   return (
@@ -31,10 +33,10 @@ export async function Shell({ me, children }: { me: StaffDTO; children: React.Re
                   {unread > 0 && <span className="ml-auto rounded-full bg-green-600 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-white">{unread > 99 ? "99+" : unread}</span>}
                 </NavLink>
               )}
-              {sees("messages") && (
-                <NavLink href="/admin/messages" icon="chat">
+              {(sees("messages") || sees("whatsapp")) && (
+                <NavLink href={sees("messages") ? "/admin/messages" : "/admin/messages/whatsapp"} icon="chat">
                   Messages
-                  {unreadMessages > 0 && <span className="ml-auto rounded-full bg-green-600 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-white">{unreadMessages > 99 ? "99+" : unreadMessages}</span>}
+                  {messagesUnread > 0 && <span className="ml-auto rounded-full bg-green-600 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-white">{messagesUnread > 99 ? "99+" : messagesUnread}</span>}
                 </NavLink>
               )}
               {sees("bookings") && <NavLink href="/admin/bookings" icon="list">Bookings</NavLink>}
