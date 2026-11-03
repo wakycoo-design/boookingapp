@@ -1,3 +1,6 @@
+/** Marks a settings page only admins see, whatever their role's ticks say. */
+export const ADMIN_ONLY = "admin-only";
+
 /** The settings sub-modules, grouped like an admin centre. */
 export const SETTINGS_GROUPS: { title: string; links: { href: string; label: string; feature: string }[] }[] = [
   {
@@ -18,7 +21,11 @@ export const SETTINGS_GROUPS: { title: string; links: { href: string; label: str
   },
   {
     title: "Users & access",
-    links: [{ href: "/admin/settings/roles", label: "Roles & permissions", feature: "settings.roles" }],
+    links: [
+      { href: "/admin/settings/roles", label: "Roles & permissions", feature: "settings.roles" },
+      // Not a tick on the permissions page: managing who can sign in stays with admins only.
+      { href: "/admin/settings/users", label: "User management", feature: ADMIN_ONLY },
+    ],
   },
   {
     title: "Communication",
