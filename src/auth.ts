@@ -38,12 +38,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user }) {
       if (user?.email) {
         const member = await app().staff.resolveLogin({ email: user.email, name: user.name }, adminEmails());
-        if (member) token.staffId = member.id;
+        if (member) {
+          token.staffId = member.id;
+          token.sessionVersion = member.sessionVersion;
+        }
       }
       return token;
     },
     async session({ session, token }) {
       if (typeof token.staffId === "string") session.user.staffId = token.staffId;
+      // Cookies from before session numbers existed count as 0, the number everyone starts with.
+      session.user.sessionVersion = typeof token.sessionVersion === "number" ? token.sessionVersion : 0;
       return session;
     },
   },
@@ -51,6 +56,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
 declare module "next-auth" {
   interface Session {
-    user: { staffId?: string; name?: string | null; email?: string | null; image?: string | null };
+    user: { staffId?: string; sessionVersion?: number; name?: string | null; email?: string | null; image?: string | null };
   }
 }

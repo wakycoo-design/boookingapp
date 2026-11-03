@@ -11,7 +11,7 @@ const RANK = { staff: 0, manager: 1, admin: 2 } as const;
 
 /**
  * The signed-in staff member, re-read from the database on every request so that
- * deactivating someone or changing their role takes effect immediately. Memoised per request, so the layout and the page that
+ * deactivating someone, signing them out everywhere or changing their role takes effect immediately. Memoised per request, so the layout and the page that
  * both ask cost one database round trip, not two.
  */
 export const currentStaff = cache(async function currentStaff(): Promise<StaffDTO | null> {
@@ -20,7 +20,9 @@ export const currentStaff = cache(async function currentStaff(): Promise<StaffDT
   if (!id) return null;
   try {
     const member = await app().staff.get(id);
-    return member.active ? member : null;
+    // A cookie issued before an admin signed them out everywhere (or terminated them) no longer counts.
+    const signedOut = (session.user.sessionVersion ?? 0) !== member.sessionVersion;
+    return member.active && !signedOut ? member : null;
   } catch (err) {
     // Matched by name as well, because the dev server can load this error class twice and `instanceof` then fails.
     if (err instanceof Error && err.name === "DomainError" && (err as DomainError).code === "not_found") return null;

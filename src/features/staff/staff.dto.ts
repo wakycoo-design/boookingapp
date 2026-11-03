@@ -16,6 +16,10 @@ export type StaffDTO = {
   active: boolean;
   /** May read and write every client's clinical record. */
   clinicalAdmin: boolean;
+  /** When an admin terminated them; null for current staff. */
+  terminatedAt: Date | null;
+  /** Sign-in cookies issued with an older number are refused (raised by "sign out everywhere"). */
+  sessionVersion: number;
 };
 
 /** What the website may see about a staff member. */

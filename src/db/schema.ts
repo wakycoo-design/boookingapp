@@ -125,6 +125,10 @@ export const staff = pgTable("staff", {
   /** SHA-256 of the one-time "forgot password" link's token (the token itself is only ever in the email), and when the link stops working. */
   resetTokenHash: text("reset_token_hash"),
   resetExpiresAt: timestamp("reset_expires_at", { withTimezone: true }),
+  /** Set when an admin terminates them: access is gone for good (until reinstated), unlike a plain deactivation. */
+  terminatedAt: timestamp("terminated_at", { withTimezone: true }),
+  /** Raised to sign them out everywhere: sign-in cookies carry the number they were issued with, and an older one no longer works. */
+  sessionVersion: integer("session_version").notNull().default(0),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 }, (t) => [uniqueIndex("staff_email_lower_idx").on(sql`lower(${t.email})`)]);

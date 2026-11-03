@@ -50,7 +50,10 @@ export function createStaffService({
 
   async function update(actor: Actor, id: string, input: Partial<StaffInput>): Promise<StaffDTO> {
     const data = await withRole(staffInput.partial().parse(input));
-    await get(id);
+    const current = await get(id);
+    if (data.active && current.terminatedAt) {
+      throw new DomainError("conflict", `${current.name} was terminated; reinstate them in Settings, User management first`);
+    }
     if (data.email) {
       const other = await staffRepo.findByEmail(data.email);
       if (other && other.id !== id) {
@@ -62,10 +65,72 @@ export function createStaffService({
     return row;
   }
 
+  /**
+   * The checks every access change shares: only an admin may make it, never to themselves (so nobody locks themselves
+   * out by accident), and never to the last admin who can still sign in.
+   */
+  async function guardAccessChange(by: { id: string; role: StaffRole }, id: string, removesAccess: boolean): Promise<StaffDTO> {
+    if (by.role !== "admin") throw new DomainError("forbidden", "Only an admin can manage user access");
+    const target = await get(id);
+    if (removesAccess && target.id === by.id) throw new DomainError("forbidden", "You can't remove your own access; ask another admin");
+    if (removesAccess && target.role === "admin" && target.active && (await staffRepo.activeAdminCount()) <= 1) {
+      throw new DomainError("conflict", `${target.name} is the only admin who can sign in, so their access can't be removed`);
+    }
+    return target;
+  }
+
+  const audit = (by: { id: string }, id: string, action: string, details?: Record<string, unknown>) => ({ actor: { staffId: by.id }, action, entity: "staff", entityId: id, details });
+
   return {
     get,
     create,
     update,
+
+    /** Can't sign in any more and isn't offered for booking, but keeps their services and can be switched back on. */
+    async deactivate(by: { id: string; role: StaffRole }, id: string) {
+      await guardAccessChange(by, id, true);
+      return staffRepo.setAccess(id, { active: false, signOut: true }, audit(by, id, "deactivate"));
+    },
+
+    async reactivate(by: { id: string; role: StaffRole }, id: string) {
+      const target = await guardAccessChange(by, id, false);
+      if (target.terminatedAt) throw new DomainError("conflict", `${target.name} was terminated; reinstate them instead`);
+      return staffRepo.setAccess(id, { active: true }, audit(by, id, "reactivate"));
+    },
+
+    /** Ends every session they have open, on every device; they can sign in again straight away. */
+    async signOutEverywhere(by: { id: string; role: StaffRole }, id: string) {
+      const target = await guardAccessChange(by, id, false);
+      return staffRepo.setAccess(id, { active: target.active, signOut: true }, audit(by, id, "sign_out_everywhere"));
+    },
+
+    /**
+     * Someone who has left: signed out everywhere, password and reset link wiped, taken off every service. Their past
+     * bookings and notes stay, with their name on them.
+     */
+    async terminate(by: { id: string; role: StaffRole }, id: string, now = new Date()) {
+      const target = await guardAccessChange(by, id, true);
+      if (target.terminatedAt) throw new DomainError("conflict", `${target.name} is already terminated`);
+      return staffRepo.setAccess(id, { active: false, terminatedAt: now, signOut: true, clearPassword: true, removeServices: true }, audit(by, id, "terminate"));
+    },
+
+    /** Lets a terminated person back in. They need a new password (or Google/Zoho) and their services set again. */
+    async reinstate(by: { id: string; role: StaffRole }, id: string) {
+      const target = await guardAccessChange(by, id, false);
+      if (!target.terminatedAt) throw new DomainError("conflict", `${target.name} isn't terminated`);
+      return staffRepo.setAccess(id, { active: true, terminatedAt: null }, audit(by, id, "reinstate"));
+    },
+
+    /** An admin sets a temporary password for someone; their other sessions end so the old password's sessions don't linger. */
+    async adminSetPassword(by: { id: string; role: StaffRole }, id: string, password: string) {
+      const target = await guardAccessChange(by, id, false);
+      if (target.terminatedAt) throw new DomainError("conflict", `${target.name} was terminated; reinstate them first`);
+      if (password.length < 8 || password.length > 200) throw new DomainError("invalid", "A password must be 8 to 200 characters long");
+      await staffRepo.setPasswordHash(id, await hashPassword(password), audit(by, id, "admin_set_password"));
+      if (id !== by.id) await staffRepo.setAccess(id, { active: target.active, signOut: true }, audit(by, id, "sign_out_everywhere"));
+    },
+
+    upcomingBookingCount: (staffId: string, now = new Date()) => staffRepo.upcomingBookingCount(staffId, now),
     list: () => staffRepo.list(),
     serviceIds: (staffId: string) => staffRepo.serviceIds(staffId),
     listBookableForService: (serviceId: string) => staffRepo.listBookableForService(serviceId),

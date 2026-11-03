@@ -1,6 +1,6 @@
 import { and, asc, eq, notInArray, sql } from "drizzle-orm";
 import type { Db } from "@/db";
-import { service, staff, staffService } from "@/db/schema";
+import { booking, service, staff, staffService } from "@/db/schema";
 import { writeAudit } from "@/features/audit/audit.repository";
 import type { AuditEntry } from "@/features/audit/audit.types";
 import type { PublicStaffDTO, StaffDTO } from "./staff.dto";
@@ -16,6 +16,8 @@ const columns = {
   timezone: staff.timezone,
   active: staff.active,
   clinicalAdmin: staff.clinicalAdmin,
+  terminatedAt: staff.terminatedAt,
+  sessionVersion: staff.sessionVersion,
 };
 
 export function createStaffRepository(db: Db) {
@@ -95,6 +97,49 @@ export function createStaffRepository(db: Db) {
         if (row) await writeAudit(tx, audit);
         return row ?? null;
       });
+    },
+
+    /**
+     * Changes whether someone can get in, with its audit row, in one step. `signOut` raises their session number so every
+     * cookie they hold stops working; `terminate` also drops their password and reset link and takes them off every
+     * service so nobody can book them.
+     */
+    setAccess(
+      id: string,
+      change: { active: boolean; terminatedAt?: Date | null; signOut?: boolean; clearPassword?: boolean; removeServices?: boolean },
+      audit: AuditEntry,
+    ): Promise<StaffDTO | null> {
+      return db.transaction(async (tx) => {
+        const [row] = await tx
+          .update(staff)
+          .set({
+            active: change.active,
+            ...(change.terminatedAt !== undefined ? { terminatedAt: change.terminatedAt } : {}),
+            ...(change.signOut ? { sessionVersion: sql`${staff.sessionVersion} + 1` } : {}),
+            ...(change.clearPassword ? { passwordHash: null, resetTokenHash: null, resetExpiresAt: null } : {}),
+          })
+          .where(eq(staff.id, id))
+          .returning(columns);
+        if (!row) return null;
+        if (change.removeServices) await tx.delete(staffService).where(eq(staffService.staffId, id));
+        await writeAudit(tx, audit);
+        return row;
+      });
+    },
+
+    /** Admins who can still sign in, so the last one can't be locked out. */
+    async activeAdminCount(): Promise<number> {
+      const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(staff).where(and(eq(staff.role, "admin"), eq(staff.active, true)));
+      return row?.n ?? 0;
+    },
+
+    /** Their sessions still to come, which someone has to move or cancel when they leave. */
+    async upcomingBookingCount(staffId: string, now: Date): Promise<number> {
+      const [row] = await db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(booking)
+        .where(and(eq(booking.staffId, staffId), sql`${booking.startsAt} > ${now}`, sql`${booking.status} = 'upcoming'`));
+      return row?.n ?? 0;
     },
 
     async serviceIds(staffId: string): Promise<string[]> {
