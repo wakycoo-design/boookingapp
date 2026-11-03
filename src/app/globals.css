@@ -234,3 +234,20 @@ body {
     animation: none;
   }
 }
+
+/* Add session note: the date is only asked for when the session wasn't booked here (the empty "Not booked" option);
+   a booked session already has its date. Pure CSS, so the server-rendered form needs no script. */
+@media (min-width: 640px) {
+  .note-form .note-session {
+    grid-column: span 3 / span 3;
+  }
+  .note-form:has(#bookingId option[value=""]:checked) .note-session {
+    grid-column: span 2 / span 2;
+  }
+}
+.note-form .note-session-date {
+  display: none;
+}
+.note-form:has(#bookingId option[value=""]:checked) .note-session-date {
+  display: block;
+}

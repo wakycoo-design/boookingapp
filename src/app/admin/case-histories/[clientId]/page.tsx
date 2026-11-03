@@ -147,16 +147,16 @@ export default async function CasePage({ params, searchParams }: { params: Promi
       )}
       <details className="card mb-4 p-5" open={r.notes.length === 0 && !empty}>
         <summary className="cursor-pointer font-medium">Add session note</summary>
-        <form action={addNoteAction.bind(null, clientId)} className="mt-4 grid gap-3 sm:grid-cols-3">
-          <div className="sm:col-span-2">
+        <form action={addNoteAction.bind(null, clientId)} className="note-form mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="note-session">
             <label className="label" htmlFor="bookingId">Session</label>
             <select className="input" id="bookingId" name="bookingId" defaultValue={noteable[0]?.id ?? ""}>
               {noteable.map((b) => <option key={b.id} value={b.id}>{dayLabel(b.startsAt, tz)}, {timeLabel(b.startsAt, tz)} · {b.serviceName} · {b.staffName}</option>)}
               <option value="">Not booked here (give the date)</option>
             </select>
           </div>
-          <div>
-            <label className="label" htmlFor="sessionOn">Date, if not booked</label>
+          <div className="note-session-date">
+            <label className="label" htmlFor="sessionOn">Date of the session</label>
             <input className="input" id="sessionOn" name="sessionOn" type="date" />
           </div>
           <NoteFields />
